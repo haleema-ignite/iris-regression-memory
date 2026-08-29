@@ -1,0 +1,92 @@
+id: IRIS-BEH-0002
+title: Persist Instagram polling dedup across restarts
+status: approved
+
+scope:
+  products: [iris]
+  repositories:
+    - ignitetech-group/iris-sp-engines
+    - ignitetech-group/iris-api
+  services: [instagram-polling]
+  paths:
+    - engines/instagram/src/polling/**
+    - engines/instagram/src/instagram-polling-state-client.ts
+    - engines/instagram/src/config.ts
+    - src/repositories/mongodb/instagramPollingState.repository.ts
+    - fixtures/sandbox/engines/instagram/src/polling/**
+  symbols:
+    - persistState
+    - applySeenIds
+    - POLL_WATERMARK_PERSISTENCE_ENABLED
+    - commentsFloor
+    - SEEN_ID_TTL_MS
+    - isBelowFloor
+  interfaces:
+    kafka_topics: []
+    configuration_keys:
+      - POLL_WATERMARK_PERSISTENCE_ENABLED
+      - POLL_COLD_START_LOOKBACK_MS
+
+incident:
+  severity: sev2
+  references:
+    - type: jira
+      key: IRISNG-3940
+      url: https://ignitetechpm.atlassian.net/browse/IRISNG-3940
+    - type: jira
+      key: IRISNG-3188
+      url: https://ignitetechpm.atlassian.net/browse/IRISNG-3188
+
+behavior:
+  invariant: >
+    Instagram polling must not re-emit already published comments, media, or
+    DMs after a pod restart once the lookback window has expired.
+  failure_mechanism: >
+    The engine retained comment IDs in memory without time expiry while the
+    durable state store pruned them after 48 hours. Because the comments
+    collector rescanned recent media without a timestamp floor, a restart
+    restored a pruned ID set and republished old comments still returned by the
+    rescan.
+  triggers:
+    - engine pod restart
+    - durable seen-ID retention shorter than the comment rescan horizon
+    - polling state client unavailable with no bounded fallback floor
+  consequences:
+    - duplicate comments in Care
+    - duplicate Kafka publications
+
+applicability:
+  strong_anchors:
+    - persistState
+    - applySeenIds
+    - watermark
+    - seenIds
+    - POLL_WATERMARK_PERSISTENCE_ENABLED
+  violation_signals:
+    - POLL_WATERMARK_PERSISTENCE_ENABLED = false
+    - "seenIds: new Set()"
+    - skip persistState
+    - in-memory only dedup
+  removal_signals:
+    - commentsFloor
+    - SEEN_ID_TTL_MS
+    - commentFloorMs
+    - isBelowFloor
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+  exclusion_notes:
+    - documentation-only changes
+  confidence: high
+
+required_guards:
+  - persist a non-advancing comments connection floor across restarts
+  - timestamp-gate comments older than the durable seen-ID retention window
+  - keep durable retention and the comment rescan horizon consistent
+  - preserve discovery of late replies inside the valid window
+
+governance:
+  owner: social-platform-team
+  approved_at: 2026-08-29
+  review_after: 2027-02-28
+  version: 1

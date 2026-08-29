@@ -1,0 +1,78 @@
+id: IRIS-BEH-0003
+title: Accept mixed Meta app webhook signatures during rotation
+status: approved
+
+scope:
+  products: [iris]
+  repositories:
+    - ignitetech-group/iris-sp-engines
+  services: [facebook-webhook, instagram-webhook]
+  paths:
+    - engines/facebook/src/webhook/**
+    - engines/instagram/src/webhook/**
+    - engines/facebook/src/runtime-pages.ts
+    - engines/instagram/src/runtime-accounts.ts
+    - fixtures/sandbox/engines/facebook/src/webhook/**
+  symbols:
+    - x-hub-signature-256
+    - appSecret
+  interfaces:
+    kafka_topics: []
+    configuration_keys:
+      - FACEBOOK_APP_SECRET
+      - INSTAGRAM_APP_SECRET
+
+incident:
+  severity: sev2
+  references:
+    - type: jira
+      key: IRISNG-3905
+      url: https://ignitetechpm.atlassian.net/browse/IRISNG-3905
+    - type: github
+      url: https://github.com/ignitetech-group/iris-sp-engines/pull/389
+
+behavior:
+  invariant: >
+    A Meta webhook signed with any currently configured app secret for the
+    receiving page or account must verify. Rotation must not drop events
+    signed by the previous app while both secrets are live.
+  failure_mechanism: >
+    Verification used a single process-wide app secret. Events from pages
+    still on the previous Meta app failed HMAC checks and were discarded.
+  triggers:
+    - mixed Meta apps on one engine
+    - app secret rotation
+  consequences:
+    - missed comments and messages
+    - silent 401 storm from Meta retries
+
+applicability:
+  strong_anchors:
+    - x-hub-signature-256
+    - timingSafeEqual
+    - FACEBOOK_APP_SECRET
+    - INSTAGRAM_APP_SECRET
+    - appSecret
+  violation_signals:
+    - verify against CONFIG only
+    - ignore page appSecret
+    - JSON.stringify(parsedBody)
+  removal_signals:
+    - getWebhookSecretCandidates
+    - verifyMetaWebhookSignature
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+  exclusion_notes:
+    - CRC GET challenge-token changes that do not alter HMAC verification
+  confidence: high
+
+required_guards:
+  - verify HMAC against the page or account app secret when present
+  - verify against the raw request body, never re-serialized JSON
+
+governance:
+  owner: social-platform-team
+  approved_at: 2026-08-29
+  review_after: 2027-02-28
+  version: 1

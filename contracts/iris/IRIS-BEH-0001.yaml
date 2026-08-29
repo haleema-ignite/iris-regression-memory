@@ -1,0 +1,79 @@
+id: IRIS-BEH-0001
+title: Preserve idempotency when retrying inbound Meta events
+status: approved
+
+scope:
+  products: [iris]
+  repositories:
+    - ignitetech-group/iris-sp-engines
+  services: [facebook-webhook, instagram-webhook, facebook-polling, instagram-polling]
+  paths:
+    - engines/facebook/src/webhook/**
+    - engines/instagram/src/webhook/**
+    - engines/facebook/src/polling/**
+    - engines/instagram/src/polling/**
+    - fixtures/sandbox/engines/facebook/**
+    - fixtures/sandbox/engines/instagram/**
+  symbols:
+    - hasSeen
+    - seenIds
+    - platformPostId
+  interfaces:
+    kafka_topics:
+      - facebook.posts.collected
+      - instagram.posts.collected
+    configuration_keys: []
+
+incident:
+  severity: sev2
+  references:
+    - type: jira
+      key: IRISNG-3975
+      url: https://ignitetechpm.atlassian.net/browse/IRISNG-3975
+
+behavior:
+  invariant: >
+    Retrying or replaying the same platform event must not publish a second
+    logical post or open a second customer case.
+  failure_mechanism: >
+    The deduplication key was derived after enrichment and could change between
+    retries, so the same platform event ID was treated as a new post.
+  triggers:
+    - webhook delivery is retried
+    - polling replay after restart
+    - enrichment produces a different derived value
+  consequences:
+    - duplicate customer cases
+    - duplicate downstream Kafka processing
+
+applicability:
+  strong_anchors:
+    - deduplication key
+    - seenIds
+    - hasSeen
+    - platform event ID
+    - platformPostId
+  violation_signals:
+    - Date.now() as dedup
+    - Math.random()
+    - derivedDedupKey
+    - hash(enriched
+  removal_signals:
+    - hasSeen
+    - platformPostId
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+  exclusion_notes:
+    - test-only fixtures that do not change production key construction
+  confidence: high
+
+required_guards:
+  - stable idempotency key based on the platform event ID
+  - seenIds or equivalent check before Kafka publish
+
+governance:
+  owner: social-platform-team
+  approved_at: 2026-08-29
+  review_after: 2027-02-28
+  version: 1

@@ -1,0 +1,74 @@
+id: IRIS-BEH-0005
+title: Resolve Instagram DM author profiles instead of numeric IGSIDs
+status: approved
+
+scope:
+  products: [iris]
+  repositories:
+    - ignitetech-group/iris-sp-engines
+  services: [instagram-webhook, instagram-polling]
+  paths:
+    - engines/instagram/src/webhook/**
+    - engines/instagram/src/instagram-api/client.ts
+    - engines/instagram/src/instagram-api/transformer.ts
+    - fixtures/sandbox/engines/instagram/src/webhook/**
+  symbols:
+    - getMessagingUserProfile
+    - IGSID
+    - from.username
+  interfaces:
+    kafka_topics: []
+    configuration_keys: []
+
+incident:
+  severity: sev2
+  references:
+    - type: jira
+      key: IRISNG-4026
+      url: https://ignitetechpm.atlassian.net/browse/IRISNG-4026
+    - type: github
+      url: https://github.com/ignitetech-group/iris-sp-engines/pull/408
+
+behavior:
+  invariant: >
+    Instagram Direct Message authors must be published with a resolved
+    username or display name, not the raw numeric IGSID, when Graph
+    profile lookup succeeds.
+  failure_mechanism: >
+    Webhook DMs carried only sender.id. Without a messaging-user profile
+    lookup, Care rendered the numeric IGSID as the customer name.
+  triggers:
+    - inbound Instagram DM webhook
+    - missing from.username on the payload
+  consequences:
+    - agents cannot identify the customer
+    - broken Care author records
+
+applicability:
+  strong_anchors:
+    - getMessagingUserProfile
+    - IGSID
+    - sender.id
+    - from.username
+  violation_signals:
+    - author.username = sender.id
+    - skip getMessagingUserProfile
+    - "displayName: igsid"
+  removal_signals:
+    - getMessagingUserProfile
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+  exclusion_notes:
+    - negative cache of a failed lookup that retries after TTL
+  confidence: high
+
+required_guards:
+  - resolve messaging user profile before publish
+  - prefer profile.username over raw IGSID
+
+governance:
+  owner: social-platform-team
+  approved_at: 2026-08-29
+  review_after: 2027-02-28
+  version: 1

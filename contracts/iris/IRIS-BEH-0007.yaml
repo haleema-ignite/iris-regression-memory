@@ -1,0 +1,86 @@
+id: IRIS-BEH-0007
+title: Keep shared Care integration rows compatible with legacy enums
+status: approved
+
+scope:
+  products: [iris]
+  repositories:
+    - ignitetech-group/iris-api
+  services: [source-integrations, social-platform-provisioners]
+  paths:
+    - src/services/admin/source-integrations.service.ts
+    - src/repositories/admin/source-integrations.repository.ts
+    - src/services/*-provisioner.service.ts
+    - src/utils/care-integration-identity.ts
+  symbols:
+    - int_source
+    - oat_provider
+    - networkKey
+    - careSource
+  interfaces:
+    kafka_topics: []
+    configuration_keys: []
+
+incident:
+  severity: sev2
+  references:
+    - type: jira
+      key: IRISNG-3518
+      url: https://ignitetechpm.atlassian.net/browse/IRISNG-3518
+    - type: jira
+      key: IRISNG-3599
+      url: https://ignitetechpm.atlassian.net/browse/IRISNG-3599
+    - type: github
+      url: https://github.com/ignitetech-group/iris-api/pull/574
+
+behavior:
+  invariant: >
+    Rows written by IRIS into the shared Care schema must use values accepted
+    by the legacy Integration.Source and OAuthTokenProvider enums. A platform
+    without a legacy enum must use int_source=EXTERNAL, oat_provider=external,
+    and preserve its platform identity in a canonical network key.
+  failure_mechanism: >
+    A modern platform identifier was written directly into legacy enum-backed
+    columns. Legacy Care parsed the unknown value as null and crashed while
+    constructing an integration provider during agent-console login.
+  triggers:
+    - onboarding a platform absent from the legacy Care enums
+    - reprovisioning after a manual database correction
+  consequences:
+    - agent-console login failure for every user on the shared container
+    - repeated manual database repair
+
+applicability:
+  strong_anchors:
+    - int_source
+    - oat_provider
+    - networkKey
+    - applebc
+    - EXTERNAL
+  violation_signals:
+    - "provider: 'applebc'"
+    - "source: 'applebc'"
+    - "int_source = 'YOUTUBE'"
+    - "int_source = 'LINKEDIN'"
+    - "int_source = 'BRANDMESSENGER'"
+  removal_signals:
+    - "careSource = 'EXTERNAL'"
+    - resolveCareIntegrationIdentity
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+  exclusion_notes:
+    - read-only display mappings that translate a safe legacy encoding back to a modern platform name
+  confidence: high
+
+required_guards:
+  - validate int_source against the authoritative legacy allowlist before writing
+  - encode unsupported platforms as EXTERNAL/external with a canonical network key
+  - scope repair and lookup queries by company and network key
+  - fail provisioning closed when the shared Care row cannot be written safely
+
+governance:
+  owner: care-compatibility-maintainers
+  approved_at: 2026-08-29
+  review_after: 2027-02-28
+  version: 1

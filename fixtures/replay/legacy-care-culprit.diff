@@ -1,0 +1,17 @@
+diff --git a/src/services/admin/source-integrations.service.ts b/src/services/admin/source-integrations.service.ts
+--- a/src/services/admin/source-integrations.service.ts
++++ b/src/services/admin/source-integrations.service.ts
+@@ -178,0 +179,13 @@
++if (data.source === 'applebc' && !tokenUuid) {
++  const token = await this.oauthRepo.createTokenForCompanyId({
++    companyId: data.companyId,
++    externalId: businessId,
++    provider: 'applebc',
++    networkKey: 'applebc',
++    token: '',
++    secret: '',
++  });
++  tokenUuid = token.uuid;
++  networkKey = networkKey || 'applebc';
++}
++return this.repo.create({ ...data, tokenUuid, networkKey });

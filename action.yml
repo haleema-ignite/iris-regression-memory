@@ -1,0 +1,18 @@
+name: Behavioral Regression Memory
+description: Detect approved historical failure mechanisms in pull-request diffs.
+inputs:
+  target_repository:
+    description: Repository whose behavioral contracts should be applied. Defaults to the pull-request repository.
+    required: false
+    default: ""
+  enforcement:
+    description: warning produces a neutral check for findings; error produces a failing check and exit code.
+    required: false
+    default: warning
+  comment:
+    description: Whether to create or update the sticky pull-request comment.
+    required: false
+    default: "true"
+runs:
+  using: node20
+  main: dist/action.cjs

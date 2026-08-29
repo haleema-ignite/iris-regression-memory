@@ -1,0 +1,19 @@
+diff --git a/engines/facebook/src/webhook/webhook.component.ts b/engines/facebook/src/webhook/webhook.component.ts
+index 1111111..2222222 100644
+--- a/engines/facebook/src/webhook/webhook.component.ts
++++ b/engines/facebook/src/webhook/webhook.component.ts
+@@ -40,8 +40,8 @@ export class FacebookWebhookComponent {
+       return;
+     }
+ 
+-    if (this.hasSeen(platformPostId)) {
+-      return;
+-    }
+-    this.seenIds.add(platformPostId);
++    const derivedDedupKey = `evt-${Date.now() as dedup}`;
++    if (this.hasSeen(derivedDedupKey)) {
++      return;
++    }
+ 
+     await this.publish(event);
+   }

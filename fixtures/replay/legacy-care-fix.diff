@@ -1,0 +1,13 @@
+diff --git a/src/services/admin/source-integrations.service.ts b/src/services/admin/source-integrations.service.ts
+--- a/src/services/admin/source-integrations.service.ts
++++ b/src/services/admin/source-integrations.service.ts
+@@ -211,4 +211,8 @@
+-const careSource = data.source;
+-const networkKey = data.networkKey;
++let careSource = data.source;
++let networkKey = data.networkKey;
++if (data.source === 'applebc') {
++  careSource = 'EXTERNAL';
++  networkKey = 'apple';
++}
+ return this.repo.create({ ...data, source: careSource, networkKey });

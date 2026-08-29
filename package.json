@@ -1,0 +1,44 @@
+{
+  "name": "iris-regression-memory",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Behavioral regression memory for IRIS: approved contracts assessed against a PR diff.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "assess": "tsx src/cli.ts",
+    "action": "tsx src/action.ts",
+    "mcp": "tsx src/mcp.ts",
+    "build": "node scripts/build.mjs",
+    "test": "tsx --test tests/unit/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm test && npm run typecheck && npm run build"
+  },
+  "license": "MIT",
+  "files": [
+    "action.yml",
+    "contracts",
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "bin": {
+    "iris-regression-memory": "dist/cli.cjs",
+    "iris-regression-memory-mcp": "dist/mcp.cjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "ajv": "^8.17.1",
+    "minimatch": "^10.0.3",
+    "yaml": "^2.8.1",
+    "zod": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

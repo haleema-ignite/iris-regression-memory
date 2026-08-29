@@ -1,0 +1,15 @@
+diff --git a/engines/instagram/src/polling/polling.component.ts b/engines/instagram/src/polling/polling.component.ts
+--- a/engines/instagram/src/polling/polling.component.ts
++++ b/engines/instagram/src/polling/polling.component.ts
+@@ -38,0 +39,2 @@
++const SEEN_ID_TTL_MS = 48 * 60 * 60 * 1000;
++type AccountState = { commentsFloor?: Date };
+@@ -785,0 +788,8 @@
++const commentFloorMs = Math.max(account.commentsFloor?.getTime() ?? 0, Date.now() - SEEN_ID_TTL_MS);
++const isBelowFloor = (timestamp?: string) => {
++  const ts = Date.parse(String(timestamp ?? ''));
++  return Number.isFinite(ts) && ts < commentFloorMs;
++};
++if (!this.hasSeen(account, comment.id) && !isBelowFloor(comment.timestamp)) publish(comment);
++if (isBelowFloor(reply.timestamp)) continue;
++await this.persistState(account, 'comments', { watermark: account.commentsFloor, seenIds: newSeenIds });
