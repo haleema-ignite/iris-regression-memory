@@ -133,6 +133,7 @@ describe("sanitized historical replay", () => {
     ["fixtures/replay/meta-signature-fix-reverse.diff", "IRIS-BEH-0003", "fail"],
     ["fixtures/replay/instagram-watermark-fix-forward.diff", "IRIS-BEH-0002", "pass"],
     ["fixtures/replay/instagram-watermark-fix-reverse.diff", "IRIS-BEH-0002", "fail"],
+    ["fixtures/replay/instagram-watermark-api-culprit.diff", "IRIS-BEH-0002", "fail"],
     ["fixtures/replay/legacy-care-culprit.diff", "IRIS-BEH-0007", "fail"],
     ["fixtures/replay/legacy-care-fix.diff", "IRIS-BEH-0007", "pass"],
   ];

@@ -42,6 +42,8 @@ export interface BehavioralContract {
   applicability: {
     strong_anchors: string[];
     violation_signals?: string[];
+    violation_signal_groups?: string[][];
+    violation_line_patterns?: string[];
     removal_signals?: string[];
     excluded_paths?: string[];
     exclusion_notes?: string[];
@@ -90,7 +92,12 @@ export interface AssessmentCoverage {
 }
 
 export interface FindingEvidence {
-  kind: "violation_signal" | "guard_removed" | "none";
+  kind:
+    | "violation_signal"
+    | "violation_signal_group"
+    | "violation_line_pattern"
+    | "guard_removed"
+    | "none";
   detail: string;
   path?: string;
 }

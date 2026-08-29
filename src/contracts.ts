@@ -58,6 +58,14 @@ export function loadContracts(dir = DEFAULT_CONTRACTS_DIR): BehavioralContract[]
         .join("; ");
       throw new Error(`${name} failed schema validation: ${errors}`);
     }
+    for (const pattern of parsed.applicability.violation_line_patterns ?? []) {
+      try {
+        new RegExp(pattern, "i");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`${name} has invalid violation_line_pattern \`${pattern}\`: ${message}`);
+      }
+    }
     contracts.push(parsed);
   }
   return contracts;

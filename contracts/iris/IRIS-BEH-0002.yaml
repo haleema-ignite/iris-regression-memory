@@ -67,6 +67,10 @@ applicability:
     - "seenIds: new Set()"
     - skip persistState
     - in-memory only dedup
+  violation_signal_groups:
+    - [SEEN_ID_TTL_MS = 48 * 60 * 60 * 1000, "mergeSeenIds("]
+  violation_line_patterns:
+    - 'persistState\s*\(\s*account\s*,\s*[''"]comments[''"]\s*,\s*\{\s*seenIds\s*:[^,}]+\}\s*\)'
   removal_signals:
     - commentsFloor
     - SEEN_ID_TTL_MS
@@ -89,4 +93,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-08-29
   review_after: 2027-02-28
-  version: 1
+  version: 3

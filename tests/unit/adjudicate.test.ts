@@ -23,6 +23,8 @@ function contract(overrides: Partial<BehavioralContract> = {}): BehavioralContra
     applicability: {
       strong_anchors: ["hasSeen"],
       violation_signals: ["Date.now() as dedup"],
+      violation_signal_groups: [],
+      violation_line_patterns: [],
       removal_signals: ["hasSeen"],
       confidence: "high",
     },
@@ -65,6 +67,125 @@ describe("adjudication", () => {
     const finding = adjudicate(hitFor(contract()), diff);
     assert.equal(finding.verdict, "fail");
     assert.equal(finding.evidence.kind, "violation_signal");
+  });
+
+  it("fails when every member of a violation group is added in one matched file", () => {
+    const item = contract({
+      applicability: {
+        strong_anchors: ["authOk"],
+        violation_signals: [],
+        violation_signal_groups: [["if (authOk)", "markAuthDegraded", "components not started"]],
+        removal_signals: [],
+        confidence: "high",
+      },
+    });
+    const diff = parseUnifiedDiff(`diff --git a/engines/facebook/src/a.ts b/engines/facebook/src/a.ts
+--- a/engines/facebook/src/a.ts
++++ b/engines/facebook/src/a.ts
+@@ -1 +1,4 @@
+ keepPublishing();
++if (authOk) startAll();
++markAuthDegraded(reason);
++logger.warn("components not started");
+`);
+    const finding = adjudicate(hitFor(item), diff);
+    assert.equal(finding.verdict, "fail");
+    assert.equal(finding.evidence.kind, "violation_signal_group");
+  });
+
+  it("does not match a partial violation group", () => {
+    const item = contract({
+      applicability: {
+        strong_anchors: ["authOk"],
+        violation_signals: [],
+        violation_signal_groups: [["if (authOk)", "markAuthDegraded", "components not started"]],
+        removal_signals: [],
+        confidence: "high",
+      },
+    });
+    const diff = parseUnifiedDiff(`diff --git a/engines/facebook/src/a.ts b/engines/facebook/src/a.ts
+--- a/engines/facebook/src/a.ts
++++ b/engines/facebook/src/a.ts
+@@ -1 +1,3 @@
+ keepPublishing();
++if (authOk) startAll();
++markAuthDegraded(reason);
+`);
+    assert.equal(adjudicate(hitFor(item), diff).verdict, "pass");
+  });
+
+  it("does not combine violation group members across files", () => {
+    const item = contract({
+      applicability: {
+        strong_anchors: ["authOk"],
+        violation_signals: [],
+        violation_signal_groups: [["if (authOk)", "markAuthDegraded"]],
+        removal_signals: [],
+        confidence: "high",
+      },
+    });
+    const diff = parseUnifiedDiff(`diff --git a/engines/facebook/src/a.ts b/engines/facebook/src/a.ts
+--- a/engines/facebook/src/a.ts
++++ b/engines/facebook/src/a.ts
+@@ -1 +1,2 @@
+ keepPublishing();
++if (authOk) startAll();
+diff --git a/engines/facebook/src/b.ts b/engines/facebook/src/b.ts
+--- a/engines/facebook/src/b.ts
++++ b/engines/facebook/src/b.ts
+@@ -1 +1,2 @@
+ keepPolling();
++markAuthDegraded(reason);
+`);
+    assert.equal(adjudicate(hitFor(item), diff).verdict, "pass");
+  });
+
+  it("fails when an added line matches a structural violation pattern", () => {
+    const item = contract({
+      applicability: {
+        strong_anchors: ["persistState"],
+        violation_signals: [],
+        violation_signal_groups: [],
+        violation_line_patterns: [
+          String.raw`persistState\s*\(\s*account\s*,\s*['"]comments['"]\s*,\s*\{\s*seenIds\s*:[^,}]+\}\s*\)`,
+        ],
+        removal_signals: [],
+        confidence: "high",
+      },
+    });
+    const diff = parseUnifiedDiff(`diff --git a/engines/facebook/src/a.ts b/engines/facebook/src/a.ts
+--- a/engines/facebook/src/a.ts
++++ b/engines/facebook/src/a.ts
+@@ -1 +1,2 @@
+ keepPublishing();
++await this.persistState(account, 'comments', { seenIds: newSeenIds });
+`);
+    const finding = adjudicate(hitFor(item), diff);
+    assert.equal(finding.verdict, "fail");
+    assert.equal(finding.evidence.kind, "violation_line_pattern");
+  });
+
+  it("does not match comment persistence when a bounded watermark is included", () => {
+    const item = contract({
+      applicability: {
+        strong_anchors: ["persistState"],
+        violation_signals: [],
+        violation_signal_groups: [],
+        violation_line_patterns: [
+          String.raw`persistState\s*\(\s*account\s*,\s*['"]comments['"]\s*,\s*\{\s*seenIds\s*:[^,}]+\}\s*\)`,
+        ],
+        removal_signals: [],
+        confidence: "high",
+      },
+    });
+    const diff = parseUnifiedDiff(`diff --git a/engines/facebook/src/a.ts b/engines/facebook/src/a.ts
+--- a/engines/facebook/src/a.ts
++++ b/engines/facebook/src/a.ts
+@@ -1 +1,2 @@
+ keepPublishing();
++await this.persistState(account, 'comments', { seenIds: newSeenIds, watermark: commentsFloor });
+`);
+    assert.equal(adjudicate(hitFor(item), diff).verdict, "pass");
   });
 
   it("does not fail on semantic-looking comments without a signal", () => {

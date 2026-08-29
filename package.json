@@ -1,6 +1,6 @@
 {
   "name": "iris-regression-memory",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "description": "Behavioral regression memory for IRIS: approved contracts assessed against a PR diff.",
   "type": "module",
@@ -12,9 +12,10 @@
     "action": "tsx src/action.ts",
     "mcp": "tsx src/mcp.ts",
     "build": "node scripts/build.mjs",
-    "test": "tsx --test tests/unit/*.test.ts",
+    "test": "node --import tsx --test tests/unit/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "check": "npm test && npm run typecheck && npm run build"
+    "check": "npm test && npm run typecheck && npm run build",
+    "evaluate:local": "node scripts/evaluate-local.mjs"
   },
   "license": "MIT",
   "files": [

@@ -36,6 +36,52 @@ function findViolationSignal(
   return undefined;
 }
 
+function findViolationSignalGroup(
+  contract: BehavioralContract,
+  files: DiffFile[],
+): FindingEvidence | undefined {
+  const groups = contract.applicability.violation_signal_groups ?? [];
+  for (const file of files) {
+    const added = file.addedLines.join("\n");
+    for (const group of groups) {
+      const normalized = group.filter((signal) => signal.trim().length > 1);
+      if (normalized.length < 2) continue;
+      if (normalized.every((signal) => containsIgnoreCase(added, signal))) {
+        return {
+          kind: "violation_signal_group",
+          detail: `added lines contain the combined failure pattern: ${normalized.map((signal) => `\`${signal}\``).join(" + ")}`,
+          path: file.path,
+        };
+      }
+    }
+  }
+  return undefined;
+}
+
+function findViolationLinePattern(
+  contract: BehavioralContract,
+  files: DiffFile[],
+): FindingEvidence | undefined {
+  const patterns = (contract.applicability.violation_line_patterns ?? []).map((source) => ({
+    source,
+    expression: new RegExp(source, "i"),
+  }));
+  for (const file of files) {
+    for (const line of file.addedLines) {
+      for (const pattern of patterns) {
+        if (pattern.expression.test(line)) {
+          return {
+            kind: "violation_line_pattern",
+            detail: `added line matches the structural failure pattern \`${pattern.source}\``,
+            path: file.path,
+          };
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
 function removalSignals(contract: BehavioralContract): string[] {
   return (contract.applicability.removal_signals ?? []).filter(
     (signal) => signal.trim().length > 3,
@@ -102,6 +148,26 @@ export function adjudicate(hit: RetrievalHit, diff: ParsedDiff): Finding {
       verdict: "fail",
       reason: `Diff recreates the historical failure mechanism for ${contract.id}.`,
       evidence: violation,
+    };
+  }
+
+  const groupedViolation = findViolationSignalGroup(contract, files);
+  if (groupedViolation) {
+    return {
+      ...base,
+      verdict: "fail",
+      reason: `Diff recreates the historical failure mechanism for ${contract.id}.`,
+      evidence: groupedViolation,
+    };
+  }
+
+  const patternedViolation = findViolationLinePattern(contract, files);
+  if (patternedViolation) {
+    return {
+      ...base,
+      verdict: "fail",
+      reason: `Diff recreates the historical failure mechanism for ${contract.id}.`,
+      evidence: patternedViolation,
     };
   }
 

@@ -1,0 +1,10 @@
+diff --git a/src/repositories/mongodb/instagramPollingState.repository.ts b/src/repositories/mongodb/instagramPollingState.repository.ts
+--- a/src/repositories/mongodb/instagramPollingState.repository.ts
++++ b/src/repositories/mongodb/instagramPollingState.repository.ts
+@@ -40,0 +41,8 @@
++const SEEN_ID_TTL_MS = 48 * 60 * 60 * 1000;
++
++function mergeSeenIds(entries: SeenIdEntry[], now: Date): SeenIdEntry[] {
++  const cutoff = now.getTime() - SEEN_ID_TTL_MS;
++  return entries.filter((entry) => entry.seenAt.getTime() >= cutoff);
++}

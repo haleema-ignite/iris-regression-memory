@@ -42,7 +42,7 @@ export function renderSarif(assessment: Assessment): object {
       tool: {
         driver: {
           name: "iris-regression-memory",
-          semanticVersion: "0.2.1",
+          semanticVersion: "0.3.0",
           rules,
         },
       },

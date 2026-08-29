@@ -63,6 +63,8 @@ applicability:
     - "int_source = 'YOUTUBE'"
     - "int_source = 'LINKEDIN'"
     - "int_source = 'BRANDMESSENGER'"
+    - "oat_provider = 'tiktok'"
+    - "'LISTENER', 'TIKTOK', 'tiktok'"
   removal_signals:
     - "careSource = 'EXTERNAL'"
     - resolveCareIntegrationIdentity
@@ -83,4 +85,4 @@ governance:
   owner: care-compatibility-maintainers
   approved_at: 2026-08-29
   review_after: 2027-02-28
-  version: 1
+  version: 2

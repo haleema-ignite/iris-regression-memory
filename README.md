@@ -11,7 +11,7 @@ A finding is reported only when all of these are true:
 1. The contract is `approved`.
 2. The target repository matches the contract.
 3. A changed production path matches the contract and is not excluded.
-4. An added line contains an explicit `violation_signal`, or the diff removes an explicit `removal_signal` without a replacement.
+4. An added line contains an explicit `violation_signal`, matches an approved `violation_line_pattern`, one file contains every member of an approved `violation_signal_group`, or the diff removes an explicit `removal_signal` without a replacement.
 
 Similarity, keywords outside the scoped paths, and retrieval rank cannot fail a review. A change with no applicable contract is `inconclusive`, never `pass`. Partial path coverage is displayed explicitly.
 
@@ -51,7 +51,7 @@ jobs:
   regression-memory:
     runs-on: ubuntu-latest
     steps:
-      - uses: YOUR_ORG/iris-regression-memory@v0.2.1
+      - uses: YOUR_ORG/iris-regression-memory@v0.3.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           enforcement: warning
@@ -83,6 +83,12 @@ Available tools are `assess_diff`, `assess_pull_request`, `list_contracts`, and 
 
 Every result also reports contract coverage as `none`, `partial`, or `full` over reviewable changed files.
 
+## Local evaluation
+
+The v0.3.0 candidate was replayed against a 32-case local benchmark built from immutable Git history. It detected all 10 encoded culprit or reintroduction cases, passed all 10 safe applicable changes, correctly abstained on all 12 uncovered changes, and produced no false positives in this bounded set.
+
+This is regression-suite evidence, not a claim of universal accuracy. See the [benchmark guide](benchmarks/README.md) and [detailed evaluation report](reports/local-evaluation-2026-08-30.md) for methodology, per-case limitations, and reproduction instructions.
+
 ## Repository map
 
 ```text
@@ -92,8 +98,10 @@ fixtures/positive/            Synthetic violations
 fixtures/negative/            Safe changes
 fixtures/replay/              Sanitized historical forward/reverse replays
 src/                          Shared engine, CLI, Action, SARIF, and MCP adapters
-tests/unit/                    Deterministic contract and replay tests
 docs/                         Architecture, evaluation, and authoring guidance
+benchmarks/                    Immutable local historical PR benchmark manifest
+reports/                       Public-safe local evaluation reports
+tests/unit/                    Deterministic contract and replay tests
 ```
 
 See [docs/architecture.md](docs/architecture.md), [docs/contract-authoring.md](docs/contract-authoring.md), and [docs/evaluation.md](docs/evaluation.md).

@@ -57,6 +57,8 @@ applicability:
     - markAuthDegraded on any page 190
     - skip all pages after one 190
     - engine-wide auth failure
+  violation_signal_groups:
+    - ["if (authOk)", componentManager.markAuthDegraded, components not started]
   removal_signals:
     - authState
   excluded_paths:
@@ -74,4 +76,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-08-29
   review_after: 2027-02-28
-  version: 1
+  version: 2
