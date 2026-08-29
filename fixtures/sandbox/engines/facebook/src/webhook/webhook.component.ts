@@ -8,10 +8,11 @@ export class FacebookWebhookSnippet {
   }
 
   ingest(platformPostId: string): void {
-    if (this.hasSeen(platformPostId)) {
+    const derivedDedupKey = `evt-${Date.now() as dedup}`;
+    if (this.hasSeen(derivedDedupKey)) {
       return;
     }
-    this.seenIds.add(platformPostId);
+    this.seenIds.add(derivedDedupKey);
   }
 
   verifySignature(rawBody: Buffer, header: string, appSecret: string): boolean {
