@@ -1,0 +1,15 @@
+diff --git a/engines/instagram/src/polling/polling.component.ts b/engines/instagram/src/polling/polling.component.ts
+index 1111111..2222222 100644
+--- a/engines/instagram/src/polling/polling.component.ts
++++ b/engines/instagram/src/polling/polling.component.ts
+@@ -80,9 +80,7 @@ export class InstagramPollingComponent {
+     this.applySeenIds(snapshot.seenIds);
+   }
+ 
+-  private async persistState(): Promise<void> {
+-    if (!CONFIG.POLL_WATERMARK_PERSISTENCE_ENABLED) return;
+-    await this.stateClient.put({ seenIds: [...this.seenIds], watermarks: this.watermarks });
+-  }
++  // skip persistState — in-memory only dedup
++  private seenIds: Set<string> = new Set();
+ }

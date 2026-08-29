@@ -1,0 +1,74 @@
+id: IRIS-BEH-0002
+title: Persist Instagram polling dedup across restarts
+status: approved
+
+scope:
+  products: [iris]
+  repositories:
+    - ignitetech-group/iris-sp-engines
+    - haleema-ignite/iris-regression-memory
+  services: [instagram-polling]
+  paths:
+    - engines/instagram/src/polling/**
+    - engines/instagram/src/config.ts
+    - fixtures/sandbox/engines/instagram/src/polling/**
+  symbols:
+    - persistState
+    - applySeenIds
+    - POLL_WATERMARK_PERSISTENCE_ENABLED
+  interfaces:
+    kafka_topics: []
+    configuration_keys:
+      - POLL_WATERMARK_PERSISTENCE_ENABLED
+      - POLL_COLD_START_LOOKBACK_MS
+
+incident:
+  severity: sev2
+  references:
+    - type: jira
+      key: IRISNG-3940
+      url: https://ignitetechpm.atlassian.net/browse/IRISNG-3940
+    - type: jira
+      key: IRISNG-3188
+      url: https://ignitetechpm.atlassian.net/browse/IRISNG-3188
+
+behavior:
+  invariant: >
+    Instagram polling must not re-emit already published comments, media, or
+    DMs after a pod restart once the lookback window has expired.
+  failure_mechanism: >
+    seenIds lived only in memory. After restart the collector had no persisted
+    watermark or id set, so it republished items older than the in-memory TTL.
+  triggers:
+    - engine pod restart
+    - polling state client unavailable with no fallback floor
+  consequences:
+    - duplicate comments in Care
+    - duplicate Kafka publications
+
+applicability:
+  strong_anchors:
+    - persistState
+    - applySeenIds
+    - watermark
+    - seenIds
+    - POLL_WATERMARK_PERSISTENCE_ENABLED
+  violation_signals:
+    - POLL_WATERMARK_PERSISTENCE_ENABLED = false
+    - "seenIds: new Set()"
+    - skip persistState
+    - in-memory only dedup
+  exclusions:
+    - documentation-only changes
+  confidence: high
+
+required_guards:
+  - persist watermark and seenIds across restarts
+  - bounded cold-start lookback when no watermark exists
+
+governance:
+  owner: social-platform-team
+  approved_by: haleema-ignite
+  approved_at: 2026-08-29
+  review_after: 2027-02-28
+  version: 1

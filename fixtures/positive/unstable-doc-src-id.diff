@@ -1,0 +1,12 @@
+diff --git a/engines/brand-messenger/src/ingest.ts b/engines/brand-messenger/src/ingest.ts
+index 1111111..2222222 100644
+--- a/engines/brand-messenger/src/ingest.ts
++++ b/engines/brand-messenger/src/ingest.ts
+@@ -12,7 +12,7 @@ export function toDocument(message: BrandMessage): DocumentRow {
+   return {
+     network: "brand-messenger",
+-    doc_src_id: message.platformPostId,
++    doc_src_id: crypto.randomUUID(), // uuid as message id; skip doc_src_id
+     text: message.text,
+   };
+ }

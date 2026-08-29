@@ -1,0 +1,13 @@
+diff --git a/engines/instagram/src/webhook/webhook.component.ts b/engines/instagram/src/webhook/webhook.component.ts
+index 1111111..2222222 100644
+--- a/engines/instagram/src/webhook/webhook.component.ts
++++ b/engines/instagram/src/webhook/webhook.component.ts
+@@ -55,8 +55,6 @@ export class InstagramWebhookComponent {
+     const igsid = event.sender.id;
+-    const profile = await this.client.getMessagingUserProfile(igsid);
+-    const username = profile.username ?? event.from.username;
++    // skip getMessagingUserProfile
++    post.author.username = sender.id;
++    post.author.displayName: igsid;
+   }
+ }

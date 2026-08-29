@@ -1,0 +1,89 @@
+{
+  "verdict": "pass",
+  "repo": "ignitetech-group/iris-sp-engines",
+  "sha": "dafd0a55772b8bfd9bc16a6fa0f7f41c0e30b01f",
+  "pr": 389,
+  "source": "ignitetech-group/iris-sp-engines#389@dafd0a5",
+  "findings": [
+    {
+      "contractId": "IRIS-BEH-0003",
+      "title": "Accept mixed Meta app webhook signatures during rotation",
+      "requiredGuards": [
+        "verify HMAC against the page or account app secret when present",
+        "verify against the raw request body, never re-serialized JSON"
+      ],
+      "references": [
+        {
+          "type": "jira",
+          "key": "IRISNG-3905",
+          "url": "https://ignitetechpm.atlassian.net/browse/IRISNG-3905"
+        },
+        {
+          "type": "github",
+          "url": "https://github.com/ignitetech-group/iris-sp-engines/pull/389"
+        }
+      ],
+      "score": 21,
+      "verdict": "pass",
+      "reason": "Applies to this change, but the required guards remain and no violation signal was added.",
+      "evidence": {
+        "kind": "none",
+        "detail": "applicable without violation"
+      }
+    },
+    {
+      "contractId": "IRIS-BEH-0001",
+      "title": "Preserve idempotency when retrying inbound Meta events",
+      "requiredGuards": [
+        "stable idempotency key based on the platform event ID",
+        "seenIds or equivalent check before Kafka publish"
+      ],
+      "references": [
+        {
+          "type": "jira",
+          "key": "IRISNG-3975",
+          "url": "https://ignitetechpm.atlassian.net/browse/IRISNG-3975"
+        }
+      ],
+      "score": 11,
+      "verdict": "pass",
+      "reason": "Applies to this change, but the required guards remain and no violation signal was added.",
+      "evidence": {
+        "kind": "none",
+        "detail": "applicable without violation"
+      }
+    },
+    {
+      "contractId": "IRIS-BEH-0005",
+      "title": "Resolve Instagram DM author profiles instead of numeric IGSIDs",
+      "requiredGuards": [
+        "resolve messaging user profile before publish",
+        "prefer profile.username over raw IGSID"
+      ],
+      "references": [
+        {
+          "type": "jira",
+          "key": "IRISNG-4026",
+          "url": "https://ignitetechpm.atlassian.net/browse/IRISNG-4026"
+        },
+        {
+          "type": "github",
+          "url": "https://github.com/ignitetech-group/iris-sp-engines/pull/408"
+        }
+      ],
+      "score": 11,
+      "verdict": "pass",
+      "reason": "Applies to this change, but the required guards remain and no violation signal was added.",
+      "evidence": {
+        "kind": "none",
+        "detail": "applicable without violation"
+      }
+    }
+  ],
+  "retrieved": [
+    "IRIS-BEH-0003",
+    "IRIS-BEH-0001",
+    "IRIS-BEH-0005"
+  ],
+  "contractsLoaded": 6
+}

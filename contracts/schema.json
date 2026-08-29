@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/haleema-ignite/iris-regression-memory/contracts/schema.json",
+  "title": "IRIS behavioral contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "status",
+    "scope",
+    "incident",
+    "behavior",
+    "applicability",
+    "required_guards",
+    "governance"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^IRIS-BEH-[0-9]{4}$"
+    },
+    "title": { "type": "string", "minLength": 8 },
+    "status": {
+      "type": "string",
+      "enum": ["extracted", "reviewed", "approved", "active", "superseded", "deprecated"]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repositories", "paths"],
+      "properties": {
+        "products": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "repositories": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "services": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "symbols": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "interfaces": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kafka_topics": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "configuration_keys": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "incident": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["references"],
+      "properties": {
+        "severity": { "type": "string" },
+        "occurred_at": { "type": "string" },
+        "culprit_pr": { "type": "string" },
+        "fixing_pr": { "type": "string" },
+        "references": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["jira", "github", "rca", "confluence"]
+              },
+              "key": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invariant", "failure_mechanism"],
+      "properties": {
+        "invariant": { "type": "string", "minLength": 12 },
+        "failure_mechanism": { "type": "string", "minLength": 12 },
+        "triggers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "consequences": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "applicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strong_anchors", "confidence"],
+      "properties": {
+        "strong_anchors": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "violation_signals": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "exclusions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        }
+      }
+    },
+    "required_guards": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "version"],
+      "properties": {
+        "owner": { "type": "string" },
+        "approved_by": { "type": "string" },
+        "approved_at": { "type": "string" },
+        "review_after": { "type": "string" },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

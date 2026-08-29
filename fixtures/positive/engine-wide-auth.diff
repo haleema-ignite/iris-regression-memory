@@ -1,0 +1,15 @@
+diff --git a/engines/facebook/src/polling/polling.component.ts b/engines/facebook/src/polling/polling.component.ts
+index 1111111..2222222 100644
+--- a/engines/facebook/src/polling/polling.component.ts
++++ b/engines/facebook/src/polling/polling.component.ts
+@@ -120,10 +120,8 @@ export class FacebookPollingComponent {
+     if (error.code === 190) {
+-      page.authState = { class: "TOKEN_INVALID", since: new Date() };
+-      this.logger.warn("Skipping poll; page auth blocked", { pageId: page.id });
+-      return;
++      this.markAuthDegraded on any page 190;
++      this.logger.error("engine-wide auth failure; skip all pages after one 190");
++      return;
+     }
+   }
+ }

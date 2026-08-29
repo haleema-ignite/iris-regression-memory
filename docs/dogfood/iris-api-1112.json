@@ -1,0 +1,43 @@
+{
+  "verdict": "pass",
+  "repo": "ignitetech-group/iris-api",
+  "sha": "ac2688f9d1d146d30c0daaabafa279ffcbf7ff7e",
+  "pr": 1112,
+  "source": "ignitetech-group/iris-api#1112@ac2688f",
+  "findings": [
+    {
+      "contractId": "IRIS-BEH-0004",
+      "title": "Isolate Facebook page auth failures per page",
+      "requiredGuards": [
+        "per-page authState with skip only for the blocked page",
+        "do not mark the engine degraded unless every page is blocked"
+      ],
+      "references": [
+        {
+          "type": "jira",
+          "key": "IRISNG-4040",
+          "url": "https://ignitetechpm.atlassian.net/browse/IRISNG-4040"
+        },
+        {
+          "type": "github",
+          "url": "https://github.com/ignitetech-group/iris-sp-engines/pull/413"
+        },
+        {
+          "type": "github",
+          "url": "https://github.com/ignitetech-group/iris-api/pull/1112"
+        }
+      ],
+      "score": 11,
+      "verdict": "pass",
+      "reason": "Applies to this change, but the required guards remain and no violation signal was added.",
+      "evidence": {
+        "kind": "none",
+        "detail": "applicable without violation"
+      }
+    }
+  ],
+  "retrieved": [
+    "IRIS-BEH-0004"
+  ],
+  "contractsLoaded": 6
+}

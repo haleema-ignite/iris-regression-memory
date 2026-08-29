@@ -1,0 +1,10 @@
+{
+  "verdict": "inconclusive",
+  "repo": "ignitetech-group/iris-api",
+  "sha": "3cb36154996792a83339888a672e015df49a35e8",
+  "pr": 1102,
+  "source": "ignitetech-group/iris-api#1102@3cb3615",
+  "findings": [],
+  "retrieved": [],
+  "contractsLoaded": 6
+}

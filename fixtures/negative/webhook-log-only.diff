@@ -1,0 +1,13 @@
+diff --git a/engines/facebook/src/webhook/webhook.component.ts b/engines/facebook/src/webhook/webhook.component.ts
+index 1111111..2222222 100644
+--- a/engines/facebook/src/webhook/webhook.component.ts
++++ b/engines/facebook/src/webhook/webhook.component.ts
+@@ -40,6 +40,7 @@ export class FacebookWebhookComponent {
+     if (this.hasSeen(platformPostId)) {
+       return;
+     }
+     this.seenIds.add(platformPostId);
++    this.logger.debug("accepted unique platform event ID", { platformPostId });
+ 
+     await this.publish(event);
+   }

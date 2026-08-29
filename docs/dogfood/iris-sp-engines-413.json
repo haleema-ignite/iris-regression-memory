@@ -1,0 +1,66 @@
+{
+  "verdict": "pass",
+  "repo": "ignitetech-group/iris-sp-engines",
+  "sha": "2ffcd05773a48d3c0db89f32d94d2037d9c38233",
+  "pr": 413,
+  "source": "ignitetech-group/iris-sp-engines#413@2ffcd05",
+  "findings": [
+    {
+      "contractId": "IRIS-BEH-0004",
+      "title": "Isolate Facebook page auth failures per page",
+      "requiredGuards": [
+        "per-page authState with skip only for the blocked page",
+        "do not mark the engine degraded unless every page is blocked"
+      ],
+      "references": [
+        {
+          "type": "jira",
+          "key": "IRISNG-4040",
+          "url": "https://ignitetechpm.atlassian.net/browse/IRISNG-4040"
+        },
+        {
+          "type": "github",
+          "url": "https://github.com/ignitetech-group/iris-sp-engines/pull/413"
+        },
+        {
+          "type": "github",
+          "url": "https://github.com/ignitetech-group/iris-api/pull/1112"
+        }
+      ],
+      "score": 13,
+      "verdict": "pass",
+      "reason": "Applies to this change, but the required guards remain and no violation signal was added.",
+      "evidence": {
+        "kind": "none",
+        "detail": "applicable without violation"
+      }
+    },
+    {
+      "contractId": "IRIS-BEH-0001",
+      "title": "Preserve idempotency when retrying inbound Meta events",
+      "requiredGuards": [
+        "stable idempotency key based on the platform event ID",
+        "seenIds or equivalent check before Kafka publish"
+      ],
+      "references": [
+        {
+          "type": "jira",
+          "key": "IRISNG-3975",
+          "url": "https://ignitetechpm.atlassian.net/browse/IRISNG-3975"
+        }
+      ],
+      "score": 12,
+      "verdict": "pass",
+      "reason": "Applies to this change, but the required guards remain and no violation signal was added.",
+      "evidence": {
+        "kind": "none",
+        "detail": "applicable without violation"
+      }
+    }
+  ],
+  "retrieved": [
+    "IRIS-BEH-0004",
+    "IRIS-BEH-0001"
+  ],
+  "contractsLoaded": 6
+}
