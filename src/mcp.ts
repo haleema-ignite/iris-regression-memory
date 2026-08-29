@@ -17,7 +17,7 @@ function toolResult(value: unknown) {
 export function createRegressionMemoryServer(): McpServer {
   const server = new McpServer({
     name: "iris-regression-memory",
-    version: "0.2.0",
+    version: "0.2.1",
   });
 
   server.registerTool(

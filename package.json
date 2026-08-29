@@ -1,6 +1,6 @@
 {
   "name": "iris-regression-memory",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Behavioral regression memory for IRIS: approved contracts assessed against a PR diff.",
   "type": "module",

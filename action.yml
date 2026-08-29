@@ -1,6 +1,9 @@
 name: Behavioral Regression Memory
 description: Detect approved historical failure mechanisms in pull-request diffs.
 inputs:
+  token:
+    description: GitHub token used to read the pull-request diff and write the comment and Check Run.
+    required: true
   target_repository:
     description: Repository whose behavioral contracts should be applied. Defaults to the pull-request repository.
     required: false
@@ -14,5 +17,5 @@ inputs:
     required: false
     default: "true"
 runs:
-  using: node20
+  using: node24
   main: dist/action.cjs

@@ -51,8 +51,9 @@ jobs:
   regression-memory:
     runs-on: ubuntu-latest
     steps:
-      - uses: YOUR_ORG/iris-regression-memory@v0.2.0
+      - uses: YOUR_ORG/iris-regression-memory@v0.2.1
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           enforcement: warning
           comment: "true"
 ```

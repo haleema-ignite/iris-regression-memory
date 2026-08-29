@@ -18,6 +18,12 @@ interface PullRequestEvent {
 }
 
 async function main(): Promise<void> {
+  const token = process.env.INPUT_TOKEN?.trim() || process.env.GITHUB_TOKEN?.trim();
+  if (!token) {
+    throw new Error("The token input or GITHUB_TOKEN environment variable is required");
+  }
+  process.env.GITHUB_TOKEN = token;
+
   const eventPath = process.env.GITHUB_EVENT_PATH;
   const sourceRepo = process.env.GITHUB_REPOSITORY;
   if (!eventPath || !sourceRepo) {
