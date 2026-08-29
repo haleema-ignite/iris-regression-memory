@@ -12,6 +12,7 @@ export class FacebookWebhookSnippet {
       return;
     }
     this.seenIds.add(platformPostId);
+    this.lastAccepted = platformPostId;
   }
 
   verifySignature(rawBody: Buffer, header: string, appSecret: string): boolean {
@@ -19,4 +20,5 @@ export class FacebookWebhookSnippet {
   }
 
   private seenIds = new Set<string>();
+  private lastAccepted?: string;
 }
