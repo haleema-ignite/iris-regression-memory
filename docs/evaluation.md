@@ -18,3 +18,5 @@ npm run build
 ```
 
 A pass means the encoded facts behave. It does not mean every IRIS regression is covered. Visible `gap` truths are the unfinished list.
+
+Local `evaluate-local.mjs` expected labels must match leftover (`0009`) and reintroduction (`0019`) semantics. iris-api cases cannot abstain while `0009` is live. See `benchmarks/README.md`.

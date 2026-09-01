@@ -2,6 +2,8 @@
   "schemaVersion": 1,
   "name": "IRIS local historical and frozen validation PR benchmark",
   "contractRelease": "truth-compiler-trial",
+  "expectationsUpdatedAt": "2026-09-01",
+  "expectationsNote": "Expected labels follow Truth Compiler leftover (IRIS-TRUTH-0009) and reintroduction (IRIS-TRUTH-0019) semantics, not the pre-compiler BEH-only pass/inconclusive labels. iris-api cases cannot abstain while 0009 is live.",
   "validationSetFrozenAt": "2026-08-30T00:00:00+05:00",
   "cases": [
     {
@@ -122,7 +124,8 @@
       "contract": "IRIS-BEH-0007",
       "base": "17c3d468b4323cf394e814a61d130820b4f810b6",
       "head": "36e72c1d2437125a6a6dad26b2cfc7172c65c73d",
-      "expected": "pass"
+      "expected": "fail",
+      "note": "IRIS-TRUTH-0009 leftover SocialGateway gate is still in this API tree. The TikTok transaction fix is not a 0009 cleanup."
     },
     {
       "id": "fix-listener-legacy-921",
@@ -134,31 +137,34 @@
       "contract": "IRIS-BEH-0007",
       "base": "bd858189c3a5b993dfe24e30cd02c208d2ac19fc",
       "head": "0ea15c6a34a9109165c3c9f962b340d6168a4679",
-      "expected": "pass"
+      "expected": "fail",
+      "note": "IRIS-TRUTH-0009 leftover SocialGateway gate is still in this API tree. The IRISNG-3599 review fix is not a 0009 cleanup."
     },
     {
       "id": "control-meta-oauth-1014",
-      "category": "uncovered_control",
+      "category": "historical_fix",
       "repository": "ignitetech-group/iris-api",
       "localDirectory": "iris-api",
       "pr": 1014,
       "incident": "IRISNG-3905",
-      "contract": null,
+      "contract": "IRIS-TRUTH-0009",
       "base": "6d88273e9dc15029358d8fea09ebe7a6ec0852f3",
       "head": "7ba2c1c645c9b460626efa7ae79d36f8e7245cfb",
-      "expected": "inconclusive"
+      "expected": "pass",
+      "note": "Removes the SocialGateway leftover. 0009 is selected and holds."
     },
     {
       "id": "control-care-history-1102",
-      "category": "uncovered_control",
+      "category": "encoded_regression",
       "repository": "ignitetech-group/iris-api",
       "localDirectory": "iris-api",
       "pr": 1102,
-      "incident": "unencoded",
-      "contract": null,
+      "incident": "CARESMM-24342",
+      "contract": "IRIS-TRUTH-0019",
       "base": "15d6c563d43154bf02929cbb6261c45b11e1adf3",
       "head": "3cb36154996792a83339888a672e015df49a35e8",
-      "expected": "inconclusive"
+      "expected": "fail",
+      "note": "Newly adds a leading-wildcard LIKE. 0019 is a reintroduction check, not a leftover scan of pre-existing queries."
     },
     {
       "id": "fix-facebook-auth-api-1112",
@@ -332,7 +338,8 @@
       "contract": null,
       "base": "b2930fc867a1b23a97fa1b5396d4d950d2ef7c86",
       "head": "2c382cfb1293414975155c9b844f485a7e41a973",
-      "expected": "inconclusive"
+      "expected": "pass",
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
     },
     {
       "id": "validation-internal-notes-1146",
@@ -344,7 +351,8 @@
       "contract": null,
       "base": "b2930fc867a1b23a97fa1b5396d4d950d2ef7c86",
       "head": "574cf177e5a72216b3e3a25ed13ca3ff719e90cb",
-      "expected": "inconclusive"
+      "expected": "pass",
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
     },
     {
       "id": "validation-push-next-1081",
@@ -356,7 +364,8 @@
       "contract": null,
       "base": "e303a7347b3c7bb047b1ab46f45064895526bbb6",
       "head": "a04824130989ac3ef66010e08b3a545b2e4d452e",
-      "expected": "inconclusive"
+      "expected": "pass",
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
     },
     {
       "id": "validation-profile-notes-1098",
@@ -368,7 +377,8 @@
       "contract": null,
       "base": "a94417491bede9e6e639854955e97fab8fd9190c",
       "head": "822ea1c99dacf9cd9f7cb7f772f4aab42fbcdd56",
-      "expected": "inconclusive"
+      "expected": "pass",
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
     },
     {
       "id": "validation-instagram-publisher-1110",
@@ -380,7 +390,8 @@
       "contract": null,
       "base": "6a502df7f8e878db525938b79b6303c826f4c198",
       "head": "aace9a3c185c4ef02d1a978137efc9fe5b756f59",
-      "expected": "inconclusive"
+      "expected": "pass",
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
     },
     {
       "id": "validation-dashboard-indexes-1152",
@@ -392,7 +403,8 @@
       "contract": null,
       "base": "0a9a530bd41a49db233bfa51796ab23d5a025b71",
       "head": "8c5b4fcc3fc004f53e242a47862eef6469b25135",
-      "expected": "inconclusive"
+      "expected": "pass",
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
     }
   ]
 }
