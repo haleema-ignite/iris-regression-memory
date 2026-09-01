@@ -1,0 +1,8 @@
+diff --git a/src/repositories/conversations.repository.mysql.ts b/src/repositories/conversations.repository.mysql.ts
+index 1111111..2222222 100644
+--- a/src/repositories/conversations.repository.mysql.ts
++++ b/src/repositories/conversations.repository.mysql.ts
+@@ -20,1 +20,3 @@
+ const limit = 50;
++const sql = `SELECT d.* FROM doc_document d
++  JOIN int_integration i ON i.id = d.doc_int_id`;

@@ -1,16 +1,41 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { lstatSync, existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { matchesAnyGlob } from "./glob.ts";
 import type { DiffFile, ParsedDiff, Workspace } from "./types.ts";
 
+const SKIP_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  ".rulesync",
+  ".worktrees",
+  "_ticket-worktrees",
+  ".cursor",
+  "coverage",
+]);
+
 function walkFiles(root: string, acc: string[] = [], current = root): string[] {
-  for (const entry of readdirSync(current)) {
-    if (entry === "node_modules" || entry === ".git" || entry === "dist") continue;
+  let entries: string[];
+  try {
+    entries = readdirSync(current);
+  } catch {
+    return acc;
+  }
+  for (const entry of entries) {
+    if (SKIP_DIRS.has(entry)) continue;
     const full = join(current, entry);
-    const stat = statSync(full);
-    if (stat.isDirectory()) {
+    let st;
+    try {
+      st = lstatSync(full);
+    } catch {
+      continue;
+    }
+    if (st.isSymbolicLink()) {
+      continue;
+    }
+    if (st.isDirectory()) {
       walkFiles(root, acc, full);
-    } else {
+    } else if (st.isFile()) {
       acc.push(relative(root, full).replace(/\\/g, "/"));
     }
   }
@@ -27,8 +52,13 @@ export function createFsWorkspace(root: string): Workspace {
     root: resolved,
     read(relPath: string) {
       const full = join(resolved, relPath);
-      if (!existsSync(full) || statSync(full).isDirectory()) return undefined;
-      return readFileSync(full, "utf8");
+      try {
+        const st = lstatSync(full);
+        if (st.isSymbolicLink() || st.isDirectory()) return undefined;
+        return readFileSync(full, "utf8");
+      } catch {
+        return undefined;
+      }
     },
     list(patterns: string[]) {
       cached ??= walkFiles(resolved);

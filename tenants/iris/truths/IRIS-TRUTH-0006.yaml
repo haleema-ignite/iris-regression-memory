@@ -3,7 +3,8 @@ tenant: iris
 title: Care int_meta values remain a flat string map
 statement: >
   Values written into Care int_meta must be serializable as Map<String,String>.
-  Nested objects such as int_meta.apiParams must not be written as objects.
+  Nested objects such as int_meta.apiParams or intMetaOverride.apiParams must
+  not be written as objects, including assignment form `apiParams = {`.
 status: live
 executor:
   kind: contract
@@ -14,7 +15,9 @@ executor:
     - javascript
   forbidden_line_patterns:
     - "apiParams\\s*:\\s*\\{"
+    - "apiParams\\s*=\\s*\\{"
     - "int_meta\\.apiParams\\s*=\\s*\\{"
+    - "intMetaOverride\\.apiParams\\s*=\\s*\\{"
   forbidden_signals:
     - "int_meta: { apiParams"
   mode: both
@@ -47,4 +50,4 @@ governance:
   owner: care-compatibility-maintainers
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 2

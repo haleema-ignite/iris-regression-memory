@@ -8,6 +8,7 @@ describe("compile emitters", () => {
     const compiled = compileRegistry(loadRegistry("iris"));
     assert.match(compiled.semgrep, /IRIS-TRUTH-0019/);
     assert.match(compiled.semgrep, /IRIS-TRUTH-0006/);
+    assert.match(compiled.semgrep, /intMetaOverride/);
     assert.match(compiled.semgrep, /LIKE/);
     assert.doesNotMatch(compiled.semgrep, /IRIS-TRUTH-0001/);
   });

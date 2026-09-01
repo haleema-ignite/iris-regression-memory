@@ -1,5 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
@@ -25,8 +26,26 @@ function run(command, args, options = {}) {
 
 function requireSuccess(result, label) {
   if (result.status !== 0) {
-    throw new Error(`${label} failed: ${(result.stderr || result.stdout).trim()}`);
+    const output = result.stderr || result.stdout;
+    const text = Buffer.isBuffer(output) ? output.toString("utf8") : String(output || "");
+    throw new Error(`${label} failed: ${text.trim()}`);
   }
+}
+
+function materializeTree(checkout, sha) {
+  const dir = mkdtempSync(join(tmpdir(), "truth-compiler-ws-"));
+  const archive = spawnSync("git", ["-C", checkout, "archive", sha], {
+    encoding: "buffer",
+    maxBuffer: 200 * 1024 * 1024,
+  });
+  requireSuccess(archive, `git archive ${sha}`);
+  const extracted = spawnSync("tar", ["-x", "-C", dir], {
+    input: archive.stdout,
+    encoding: "buffer",
+    maxBuffer: 200 * 1024 * 1024,
+  });
+  requireSuccess(extracted, `tar ${sha}`);
+  return dir;
 }
 
 function summarize(cases) {
@@ -104,19 +123,39 @@ for (const item of manifest.cases) {
   const diff = run("git", diffArgs);
   requireSuccess(diff, `${item.id}: git diff`);
 
-  const assessmentRun = run(
-    process.execPath,
-    [cliPath, "assess", "--tenant", "iris", "--repo", item.repository, "--diff-file", "/dev/stdin", "--json"],
-    {
-      cwd: repoRoot,
-      input: diff.stdout,
-      env: { ...process.env, TRUTH_COMPILER_ROOT: repoRoot, IRIS_REGRESSION_MEMORY_ROOT: repoRoot },
-    },
-  );
-  if (!assessmentRun.stdout.trim()) {
-    throw new Error(`${item.id}: assessor returned no JSON: ${assessmentRun.stderr.trim()}`);
+  const treeSha = item.reverse ? item.base : item.head;
+  const materialized = materializeTree(checkout, treeSha);
+  let assessment;
+  try {
+    const assessmentRun = run(
+      process.execPath,
+      [
+        cliPath,
+        "assess",
+        "--tenant",
+        "iris",
+        "--repo",
+        item.repository,
+        "--diff-file",
+        "/dev/stdin",
+        "--workspace",
+        materialized,
+        "--json",
+      ],
+      {
+        cwd: repoRoot,
+        input: diff.stdout,
+        env: { ...process.env, TRUTH_COMPILER_ROOT: repoRoot, IRIS_REGRESSION_MEMORY_ROOT: repoRoot },
+      },
+    );
+    if (!assessmentRun.stdout.trim()) {
+      throw new Error(`${item.id}: assessor returned no JSON: ${assessmentRun.stderr.trim()}`);
+    }
+    assessment = JSON.parse(assessmentRun.stdout);
+  } finally {
+    rmSync(materialized, { recursive: true, force: true });
   }
-  const assessment = JSON.parse(assessmentRun.stdout);
+
   results.push({
     id: item.id,
     category: item.category,
@@ -131,6 +170,7 @@ for (const item of manifest.cases) {
     diffBytes: Buffer.byteLength(diff.stdout),
     durationMs: Number((performance.now() - startedAt).toFixed(1)),
     outcome: assessment.outcome,
+    workspaceSha: treeSha,
     findings: assessment.findings.map((finding) => ({
       truthId: finding.truthId ?? finding.contractId,
       executor: finding.executor,

@@ -3,7 +3,9 @@ tenant: iris
 title: Normal integration enumeration excludes deleted rows
 statement: >
   Queries that enumerate int_integration for normal agent or admin flows must
-  mention int_deleted so soft-deleted rows are not treated as live.
+  mention int_deleted so soft-deleted rows are not treated as live. This is a
+  reintroduction check on added SQL, not a scan of pre-existing enumerations.
+  Historical joins and includeDeleted lookups are allowed.
 status: live
 executor:
   kind: contract
@@ -15,7 +17,12 @@ executor:
     - java
   query_anchor: int_integration
   query_required: int_deleted
-  mode: both
+  query_allow_if:
+    - includeDeleted
+    - withDeleted
+    - historical
+    - JOIN int_integration
+  mode: added_lines
 applies_to:
   repositories:
     - ignitetech-group/iris-api
@@ -40,4 +47,4 @@ governance:
   owner: care-compatibility-maintainers
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 2

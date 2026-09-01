@@ -17,6 +17,8 @@ A truth is allowed into `live` only when it is falsifiable, cited, scoped, and r
 - If the customer can still do the thing, use `kind: product` with `files` + `must_contain`, and bind it to a blocking path (see `IRIS-TRUTH-0003`).
 - If the dangerous file is often not in the PR, use `kind: decision` and `scan_workspace: true`.
 - If two consumers must agree, use `kind: contract`.
+- If a required guard must exist in scoped files (not only “was not removed in this hunk”), set `require_present: true`. Prove it against `--workspace`; new files can be proven from the diff alone.
+- If a SQL shape is a reintroduction check, set `mode: added_lines`. Use `query_allow_if` for historical joins and explicit includeDeleted lookups. Do not scan every pre-existing query in a touched file.
 
 ## Status
 

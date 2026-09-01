@@ -11,7 +11,7 @@ npm run build
 npm run evaluate:local -- --workspace /absolute/path/to/IRIS
 ```
 
-The evaluator uses `git diff base...head`, matching GitHub's merge-base review semantics. Reverse cases use the exact inverse of a historical fixing diff and are labeled counterfactual reintroductions; they are not presented as real historical pull requests.
+The evaluator reconstructs each case as `git diff base...head` plus a materialized `git archive` of the head tree (base tree for reverse cases) passed as `--workspace`. Diff-only scoring is not a Truth Compiler metric. `contractRelease` is `truth-compiler-trial`, not the old v0.3.0 Regression Memory label.
 
 The 32-case manifest combines the original historical replay set with 12 validation PRs frozen before the engine-side watermark rule was added. Case `contract` ids are the legacy IRIS-BEH labels; the compiler now evaluates the migrated `IRIS-TRUTH-*` facts. Three of the additions are untouched same-path controls and nine are uncovered controls.
 

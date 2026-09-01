@@ -1,0 +1,13 @@
+diff --git a/src/services/community-provisioner.service.ts b/src/services/community-provisioner.service.ts
+index 1111111..2222222 100644
+--- a/src/services/community-provisioner.service.ts
++++ b/src/services/community-provisioner.service.ts
+@@ -590,2 +590,8 @@
+     if (typeof input.enableShowHidden === 'boolean') {
+       intMetaOverride.enableShowHidden = input.enableShowHidden;
++      intMetaOverride.apiParams = {
++        endpointParams: {
++          'Community.posts.recent': { params: { show_hidden: 'true' } },
++        },
++      };
+     }

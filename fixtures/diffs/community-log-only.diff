@@ -1,0 +1,7 @@
+diff --git a/engines/community/src/polling/polling.component.ts b/engines/community/src/polling/polling.component.ts
+index 1111111..2222222 100644
+--- a/engines/community/src/polling/polling.component.ts
++++ b/engines/community/src/polling/polling.component.ts
+@@ -3,1 +3,2 @@
+     const boards = await this.client.getBoards();
++    this.logger.info("poll");

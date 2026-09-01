@@ -1,0 +1,9 @@
+diff --git a/src/repositories/admin/source-integrations.repository.ts b/src/repositories/admin/source-integrations.repository.ts
+index 1111111..2222222 100644
+--- a/src/repositories/admin/source-integrations.repository.ts
++++ b/src/repositories/admin/source-integrations.repository.ts
+@@ -20,1 +20,4 @@
+ const companyId = 1;
++const where = ["int_com_id = ?"];
++where.push("int_deleted = 0");
++const sql = `SELECT id FROM int_integration WHERE ${where.join(" AND ")}`;

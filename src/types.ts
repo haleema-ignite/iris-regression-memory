@@ -47,6 +47,8 @@ export interface ExecutorSpec {
   allowlist_paths?: string[];
   query_anchor?: string;
   query_required?: string;
+  query_allow_if?: string[];
+  require_present?: boolean;
   languages?: string[];
   coderabbit_path?: string;
   coderabbit_instruction?: string;

@@ -2,8 +2,9 @@ id: IRIS-TRUTH-0019
 tenant: iris
 title: Do not use leading-wildcard LIKE on Care integration metadata
 statement: >
-  Queries must not use LIKE '%…%' against int_meta or other large Care tables.
-  Leading wildcards cannot use indexes and were a blast-radius amplifier.
+  Queries must not add LIKE '%…%' against int_meta or other large Care tables.
+  Leading wildcards cannot use indexes. This is a reintroduction check on added
+  lines, not a leftover ratchet for pre-existing queries in files the PR touched.
 status: live
 executor:
   kind: semgrep
@@ -13,7 +14,7 @@ executor:
     - typescript
     - javascript
     - java
-  mode: both
+  mode: added_lines
   forbidden_line_patterns:
     - "LIKE\\s+['\"]%"
     - "int_meta LIKE '%"
@@ -39,4 +40,4 @@ governance:
   owner: care-compatibility-maintainers
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 2

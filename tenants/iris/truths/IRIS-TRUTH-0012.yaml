@@ -10,6 +10,7 @@ executor:
   blocking: true
   emit: none
   mode: both
+  require_present: true
   forbidden_signals:
     - fail open
     - treat missing board as visible
@@ -41,4 +42,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 2

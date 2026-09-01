@@ -5,6 +5,7 @@ import {
   findRemovedGuard,
   findSignalGroup,
   findSignalInAdded,
+  missingRequiredSignals,
   pass,
   relevantDiffFiles,
   workspaceBodies,
@@ -64,6 +65,17 @@ export function runPattern(ctx: ExecutorContext): ExecutorResult {
             });
           }
         }
+      }
+    }
+    if (truth.executor.require_present) {
+      const provingBodies = workspace.root
+        ? bodies
+        : bodies.filter((file) =>
+          files.some((diffFile) => diffFile.path === file.path && diffFile.status === "added"),
+        );
+      const missing = missingRequiredSignals(provingBodies, truth.executor.required_signals ?? []);
+      if (missing) {
+        return fail(`${truth.id} is missing a required guard in scoped files.`, missing);
       }
     }
   }

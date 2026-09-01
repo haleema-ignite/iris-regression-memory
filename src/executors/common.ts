@@ -132,6 +132,24 @@ export function findLinePattern(files: DiffFile[], patterns: string[]): FindingE
   return undefined;
 }
 
+export function missingRequiredSignals(
+  bodies: Array<{ path: string; body: string }>,
+  signals: string[],
+): FindingEvidence | undefined {
+  if (bodies.length === 0 || signals.length === 0) return undefined;
+  const haystack = bodies.map((file) => file.body).join("\n");
+  for (const signal of signals) {
+    if (!containsIgnoreCase(haystack, signal)) {
+      return {
+        kind: "guard_removed",
+        detail: `required guard \`${signal}\` is not present in scoped files`,
+        path: bodies[0]?.path,
+      };
+    }
+  }
+  return undefined;
+}
+
 export function findRemovedGuard(files: DiffFile[], tokens: string[]): FindingEvidence | undefined {
   const current = files.flatMap((file) => [...file.contextLines, ...file.addedLines]).join("\n");
   for (const file of files) {

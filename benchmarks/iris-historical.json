@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "IRIS local historical and frozen validation PR benchmark",
-  "contractRelease": "v0.3.0",
+  "contractRelease": "truth-compiler-trial",
   "validationSetFrozenAt": "2026-08-30T00:00:00+05:00",
   "cases": [
     {

@@ -96,6 +96,11 @@
         },
         "query_anchor": { "type": "string" },
         "query_required": { "type": "string" },
+        "query_allow_if": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 2 }
+        },
+        "require_present": { "type": "boolean" },
         "languages": {
           "type": "array",
           "items": { "type": "string" }

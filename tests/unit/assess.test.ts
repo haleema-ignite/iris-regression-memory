@@ -138,16 +138,40 @@ describe("contract and decision truths", () => {
     assert.ok(result.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0006" && finding.verdict === "fail"));
   });
 
+  it("fails the exact IRISNG-4090 intMetaOverride.apiParams assignment", () => {
+    const result = assessFixture("fixtures/diffs/int-meta-override.diff", apiRepo);
+    assert.equal(result.verdict, "fail", JSON.stringify(result.findings, null, 2));
+    assert.ok(result.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0006" && finding.verdict === "fail"));
+  });
+
   it("fails integration enumeration that drops int_deleted", () => {
     const result = assessFixture("fixtures/diffs/int-deleted-missing.diff", apiRepo);
     assert.equal(result.verdict, "fail");
     assert.ok(result.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0008" && finding.verdict === "fail"));
   });
 
-  it("fails leading-wildcard LIKE against int_meta", () => {
+  it("passes dynamically composed int_deleted filters", () => {
+    const result = assessFixture("fixtures/diffs/int-deleted-dynamic.diff", apiRepo);
+    const finding = result.findings.find((item) => item.truthId === "IRIS-TRUTH-0008");
+    assert.equal(finding?.verdict, "pass", JSON.stringify(result.findings, null, 2));
+  });
+
+  it("passes historical JOIN int_integration lookups", () => {
+    const result = assessFixture("fixtures/diffs/int-deleted-historical-join.diff", apiRepo);
+    const finding = result.findings.find((item) => item.truthId === "IRIS-TRUTH-0008");
+    assert.equal(finding?.verdict, "pass", JSON.stringify(result.findings, null, 2));
+  });
+
+  it("fails leading-wildcard LIKE against int_meta when it is added", () => {
     const result = assessFixture("fixtures/diffs/like-leading-wildcard.diff", apiRepo);
     assert.equal(result.verdict, "fail");
     assert.ok(result.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0019" && finding.verdict === "fail"));
+  });
+
+  it("does not fail a PR that only touches a pre-existing LIKE", () => {
+    const result = assessFixture("fixtures/diffs/like-preexisting-context.diff", apiRepo);
+    const finding = result.findings.find((item) => item.truthId === "IRIS-TRUTH-0019");
+    assert.equal(finding?.verdict, "pass", JSON.stringify(result.findings, null, 2));
   });
 
   it("fails a leftover SocialGateway gate even when this PR did not add it", () => {
@@ -168,6 +192,26 @@ describe("contract and decision truths", () => {
     const result = assessFixture("fixtures/diffs/hidden-board-fail-open.diff", enginesRepo);
     assert.equal(result.verdict, "fail");
     assert.ok(result.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0012" && finding.verdict === "fail"));
+  });
+
+  it("fails a community engine that never had board filtering", () => {
+    const result = assessFixture("fixtures/diffs/community-no-board-filter.diff", enginesRepo);
+    assert.equal(result.verdict, "fail", JSON.stringify(result.findings, null, 2));
+    assert.ok(result.findings.some((finding) =>
+      finding.truthId === "IRIS-TRUTH-0012" &&
+      finding.verdict === "fail" &&
+      finding.evidence.detail.includes("required guard"),
+    ));
+  });
+
+  it("passes a community log-only change when the checkout still fail-closes hidden boards", () => {
+    const result = assessFixture(
+      "fixtures/diffs/community-log-only.diff",
+      enginesRepo,
+      "fixtures/workspaces/community-ok",
+    );
+    const finding = result.findings.find((item) => item.truthId === "IRIS-TRUTH-0012");
+    assert.equal(finding?.verdict, "pass", JSON.stringify(result.findings, null, 2));
   });
 });
 
