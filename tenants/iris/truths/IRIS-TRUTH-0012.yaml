@@ -1,0 +1,44 @@
+id: IRIS-TRUTH-0012
+tenant: iris
+title: Hidden and unknown community boards fail closed
+statement: >
+  Community polling must drop hidden or unknown boards unless an explicit
+  includeHidden override is set. Missing bulk-map entries are not visible.
+status: live
+executor:
+  kind: pattern
+  blocking: true
+  emit: none
+  mode: both
+  forbidden_signals:
+    - fail open
+    - treat missing board as visible
+    - assume visible when absent
+    - default includeHidden true
+  required_signals:
+    - fail closed
+    - includeHidden
+applies_to:
+  repositories:
+    - ignitetech-group/iris-sp-engines
+  paths:
+    - engines/community/src/polling/**
+  coupling:
+    - community-board-visibility
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+evidence:
+  - type: jira
+    key: IRISNG-3231
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3231
+failure_mechanism: >
+  The engine failed open compared with legacy fail-closed. Unit tests mocked a
+  bulk map that included hidden boards; live LIQL omits them.
+required_guards:
+  - Resolve missing boards by id and drop unless includeHidden is explicit
+governance:
+  owner: social-platform-team
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

@@ -1,0 +1,36 @@
+id: IRIS-TRUTH-0004
+tenant: iris
+title: iris-e2e still has Generate Campaign P14
+statement: >
+  iris-e2e publisherCoverage must keep a P14 Generate Campaign presence check
+  so the compiler has an executable product probe to bind onto a blocking path.
+status: live
+executor:
+  kind: product
+  blocking: true
+  emit: none
+  files:
+    - tests/ui-spec/publisherCoverage.spec.ts
+  must_contain:
+    - "P14"
+    - Generate Campaign
+applies_to:
+  repositories:
+    - ignitetech-group/iris-e2e
+  paths:
+    - tests/ui-spec/publisherCoverage.spec.ts
+  always_on: true
+  scan_workspace: true
+evidence:
+  - type: e2e
+    key: P14
+    url: https://github.com/ignitetech-group/iris-e2e
+failure_mechanism: >
+  Deleting the only Generate Campaign e2e case would make promotion binding empty.
+required_guards:
+  - Keep P14 Generate Campaign in publisherCoverage.spec.ts
+governance:
+  owner: publisher-maintainers
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

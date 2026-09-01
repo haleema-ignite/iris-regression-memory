@@ -1,0 +1,42 @@
+id: IRIS-TRUTH-0001
+tenant: iris
+title: Generate Campaign remains on the publisher calendar header
+statement: >
+  The publisher calendar header must render a visible Generate Campaign control.
+  Calendar, filter, search, and assets refactors must not drop it.
+status: live
+executor:
+  kind: product
+  blocking: true
+  emit: none
+  files:
+    - src/features/publishing/calendar/components/PublisherCalendarHeader.tsx
+  must_contain:
+    - Generate Campaign
+    - onGenerateCampaign
+applies_to:
+  repositories:
+    - ignitetech-group/iris-web
+  paths:
+    - src/features/publishing/calendar/**
+    - src/features/publishing/campaigns/**
+  always_on: true
+  scan_workspace: true
+  coupling:
+    - publisher-calendar-header
+evidence:
+  - type: slack
+    note: Generate Campaign disappeared after calendar and assets fixes
+  - type: e2e
+    key: P14
+    note: iris-e2e publisherCoverage.spec.ts already asserts the button
+failure_mechanism: >
+  A shared header change removed or hid the control while the ticket AC only
+  covered calendar layout.
+required_guards:
+  - Keep the Generate Campaign button in PublisherCalendarHeader
+governance:
+  owner: publisher-maintainers
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

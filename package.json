@@ -1,31 +1,35 @@
 {
-  "name": "iris-regression-memory",
-  "version": "0.3.0",
+  "name": "truth-compiler",
+  "version": "1.0.0",
   "private": true,
-  "description": "Behavioral regression memory for IRIS: approved contracts assessed against a PR diff.",
+  "description": "Truth Compiler: learn a GitHub system, compile facts onto Semgrep, CodeRabbit, contracts, and product proofs, and fail when a recorded fact is no longer true. IRIS is tenant zero.",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "assess": "tsx src/cli.ts",
+    "assess": "tsx src/cli.ts assess",
+    "compile": "tsx src/cli.ts compile --tenant iris --out tenants/iris/emitters",
+    "list": "tsx src/cli.ts list --tenant iris",
     "action": "tsx src/action.ts",
     "mcp": "tsx src/mcp.ts",
     "build": "node scripts/build.mjs",
     "test": "node --import tsx --test tests/unit/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "check": "npm test && npm run typecheck && npm run build",
+    "check": "npm test && npm run typecheck && npm run compile && npm run build",
     "evaluate:local": "node scripts/evaluate-local.mjs"
   },
   "license": "MIT",
   "files": [
     "action.yml",
-    "contracts",
+    "tenants",
     "dist",
     "LICENSE",
     "README.md"
   ],
   "bin": {
+    "truth-compiler": "dist/cli.cjs",
+    "truth-compiler-mcp": "dist/mcp.cjs",
     "iris-regression-memory": "dist/cli.cjs",
     "iris-regression-memory-mcp": "dist/mcp.cjs"
   },

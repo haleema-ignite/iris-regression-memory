@@ -1,0 +1,27 @@
+# Drop this into an IRIS service repository (iris-web, iris-api, iris-sp-engines, iris-e2e).
+# The Action checks out this service (GITHUB_WORKSPACE) and loads truths from the compiler repo.
+
+name: Truth Compiler
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  truth-compiler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: haleema-ignite/iris-regression-memory@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tenant: iris
+          enforcement: error
+          comment: "true"

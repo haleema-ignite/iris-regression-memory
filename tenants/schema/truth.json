@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:truth-compiler:truth:v1",
+  "title": "Truth Compiler truth",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "tenant",
+    "title",
+    "statement",
+    "status",
+    "executor",
+    "applies_to",
+    "evidence",
+    "governance"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]+-TRUTH-[0-9]{4}$"
+    },
+    "tenant": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,32}$"
+    },
+    "title": { "type": "string", "minLength": 8 },
+    "statement": { "type": "string", "minLength": 16 },
+    "status": {
+      "type": "string",
+      "enum": ["live", "proposed", "gap", "superseded", "deprecated"]
+    },
+    "legacy_id": { "type": "string" },
+    "failure_mechanism": { "type": "string" },
+    "required_guards": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "executor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "blocking"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["pattern", "product", "contract", "decision", "semgrep", "coderabbit"]
+        },
+        "blocking": { "type": "boolean" },
+        "emit": {
+          "type": "string",
+          "enum": ["none", "semgrep", "coderabbit"]
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["added_lines", "workspace", "both"]
+        },
+        "files": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "must_contain": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 2 }
+        },
+        "must_not_contain": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 2 }
+        },
+        "forbidden_signals": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 2 }
+        },
+        "forbidden_signal_groups": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "items": { "type": "string", "minLength": 2 }
+          }
+        },
+        "forbidden_line_patterns": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 4, "maxLength": 500 }
+        },
+        "required_signals": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 3 }
+        },
+        "leftover_tokens": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 4 }
+        },
+        "allowlist_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "query_anchor": { "type": "string" },
+        "query_required": { "type": "string" },
+        "languages": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "coderabbit_path": { "type": "string" },
+        "coderabbit_instruction": { "type": "string" },
+        "e2e_repository": { "type": "string" },
+        "e2e_spec": { "type": "string" },
+        "e2e_case": { "type": "string" }
+      }
+    },
+    "applies_to": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repositories"],
+      "properties": {
+        "repositories": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 3 }
+        },
+        "paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "excluded_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "always_on": { "type": "boolean" },
+        "scan_workspace": { "type": "boolean" },
+        "coupling": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["jira", "github", "rca", "confluence", "slack", "e2e"]
+          },
+          "key": { "type": "string" },
+          "url": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "version"],
+      "properties": {
+        "owner": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*-(team|maintainers|owners)$"
+        },
+        "approved_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "review_after": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "live" } } },
+      "then": {
+        "properties": {
+          "governance": {
+            "required": ["owner", "approved_at", "review_after", "version"]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+groups:
+  - id: publisher-calendar-header
+    statement: >
+      PublisherCalendarHeader is a shared shell. Calendar, filter, search, and
+      assets changes can drop sibling actions such as Generate Campaign.
+    paths:
+      - src/features/publishing/calendar/**
+      - src/features/publishing/campaigns/**
+    markers:
+      - PublisherCalendarHeader
+      - onGenerateCampaign
+      - Generate Campaign
+    truth_ids:
+      - IRIS-TRUTH-0001
+      - IRIS-TRUTH-0002
+      - IRIS-TRUTH-0018
+  - id: care-shared-schema
+    statement: iris-api writers and ic-backend readers share Care MySQL columns.
+    paths:
+      - src/services/**/*provisioner*
+      - src/services/admin/source-integrations*
+      - src/repositories/admin/source-integrations*
+      - src/utils/care-integration-identity.ts
+    markers:
+      - int_meta
+      - int_source
+      - oat_provider
+    truth_ids:
+      - IRIS-TRUTH-0005
+      - IRIS-TRUTH-0006
+      - IRIS-TRUTH-0008
+  - id: community-board-visibility
+    statement: Community polling board maps must fail closed for hidden and unknown boards.
+    paths:
+      - engines/community/src/polling/**
+    markers:
+      - includeHidden
+      - hidden board
+    truth_ids:
+      - IRIS-TRUTH-0012

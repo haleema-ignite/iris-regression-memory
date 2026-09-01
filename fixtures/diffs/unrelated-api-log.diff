@@ -1,0 +1,9 @@
+diff --git a/src/services/smm/content-sources.service.ts b/src/services/smm/content-sources.service.ts
+index 1111111..2222222 100644
+--- a/src/services/smm/content-sources.service.ts
++++ b/src/services/smm/content-sources.service.ts
+@@ -1,2 +1,3 @@
+ export function resolveCredentials() {
++  // leftover gate still present
+   return process.env.META_APP_ID;
+ }

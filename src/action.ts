@@ -1,4 +1,4 @@
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { runAssessment } from "./cli.ts";
 import {
   createCheckRun,
@@ -38,33 +38,47 @@ async function main(): Promise<void> {
   }
 
   const targetRepo = process.env.INPUT_TARGET_REPOSITORY?.trim() ||
+    process.env.TRUTH_COMPILER_TARGET_REPOSITORY?.trim() ||
     process.env.REGRESSION_MEMORY_TARGET_REPOSITORY?.trim() ||
     sourceRepo;
+  const tenant = process.env.INPUT_TENANT?.trim() ||
+    process.env.TRUTH_COMPILER_TENANT?.trim() ||
+    "iris";
   const enforcementValue = process.env.INPUT_ENFORCEMENT?.trim() ||
+    process.env.TRUTH_COMPILER_ENFORCEMENT?.trim() ||
     process.env.REGRESSION_MEMORY_ENFORCEMENT?.trim() ||
-    "warning";
+    "error";
   if (enforcementValue !== "warning" && enforcementValue !== "error") {
     throw new Error("enforcement must be warning or error");
   }
   const enforcement = enforcementValue as EnforcementMode;
-  const shouldComment = (process.env.INPUT_COMMENT ?? process.env.REGRESSION_MEMORY_COMMENT ?? "true") !== "false";
+  const shouldComment = (process.env.INPUT_COMMENT ?? process.env.TRUTH_COMPILER_COMMENT ?? process.env.REGRESSION_MEMORY_COMMENT ?? "true") !== "false";
+  const workspaceInput = process.env.INPUT_WORKSPACE?.trim() || process.env.GITHUB_WORKSPACE || "";
+  const workspace = workspaceInput && existsSync(workspaceInput) ? workspaceInput : undefined;
 
-  const assessment = await runAssessment({ repo: targetRepo, sourceRepo, pr });
+  const assessment = await runAssessment({
+    tenant,
+    repo: targetRepo,
+    sourceRepo,
+    pr,
+    workspace,
+    enforcement,
+  });
   const body = renderMarkdown(assessment);
   if (process.env.GITHUB_STEP_SUMMARY) {
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${body}\n`, "utf8");
   }
   if (shouldComment) {
-    await upsertStickyComment(sourceRepo, pr, body);
+    await upsertStickyComment(sourceRepo, pr, body, "<!-- truth-compiler -->");
   }
 
   const conclusion = checkConclusion(assessment.verdict, enforcement, assessment.coverage.status);
   await createCheckRun({
     repo: sourceRepo,
     headSha: sha,
-    name: "Behavioral Regression Memory",
+    name: "Truth Compiler",
     conclusion,
-    title: `Behavioral regression: ${assessment.outcome.replaceAll("_", " ")}`,
+    title: `Truth compiler: ${assessment.outcome.replaceAll("_", " ")}`,
     summary: body,
   });
 

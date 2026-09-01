@@ -1,31 +1,44 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { assess } from "./assess.ts";
-import { loadContracts } from "./contracts.ts";
+import { writeCompileResult } from "./compile.ts";
 import { filesToUnifiedDiff, parseUnifiedDiff } from "./diff.ts";
 import { fetchPullRequest, fetchPullRequestFiles } from "./github.ts";
+import { loadRegistry } from "./registry.ts";
 import { renderMarkdown } from "./report.ts";
 import type { EnforcementMode } from "./report.ts";
 import { renderSarif } from "./sarif.ts";
 import type { Assessment } from "./types.ts";
+import { createFsWorkspace } from "./workspace.ts";
 
 export type OutputFormat = "markdown" | "json" | "sarif";
 
 export interface CliOptions {
+  command?: "assess" | "compile" | "list";
+  tenant?: string;
   repo?: string;
   sourceRepo?: string;
   pr?: number;
   diffFile?: string;
+  workspace?: string;
   format?: OutputFormat;
   enforcement?: EnforcementMode;
-  contractsDir?: string;
+  outDir?: string;
 }
 
 export function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {};
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-    const next = argv[i + 1];
-    if (arg === "--repo" && next) {
+  const rest = [...argv];
+  if (rest[0] === "assess" || rest[0] === "compile" || rest[0] === "list") {
+    options.command = rest.shift() as CliOptions["command"];
+  }
+  for (let i = 0; i < rest.length; i += 1) {
+    const arg = rest[i];
+    const next = rest[i + 1];
+    if (arg === "--tenant" && next) {
+      options.tenant = next;
+      i += 1;
+    } else if (arg === "--repo" && next) {
       options.repo = next;
       i += 1;
     } else if (arg === "--source-repo" && next) {
@@ -37,6 +50,9 @@ export function parseArgs(argv: string[]): CliOptions {
     } else if (arg === "--diff-file" && next) {
       options.diffFile = next;
       i += 1;
+    } else if (arg === "--workspace" && next) {
+      options.workspace = next;
+      i += 1;
     } else if (arg === "--json") {
       options.format = "json";
     } else if (arg === "--sarif") {
@@ -47,32 +63,39 @@ export function parseArgs(argv: string[]): CliOptions {
     } else if (arg === "--enforcement" && next && ["warning", "error"].includes(next)) {
       options.enforcement = next as EnforcementMode;
       i += 1;
-    } else if (arg === "--contracts-dir" && next) {
-      options.contractsDir = next;
+    } else if (arg === "--out" && next) {
+      options.outDir = next;
       i += 1;
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
     }
   }
+  if (!options.command) {
+    options.command = options.outDir && !options.repo && !options.pr && !options.diffFile
+      ? "compile"
+      : "assess";
+  }
   return options;
 }
 
 function printHelp(): void {
   process.stdout.write(`Usage:
-  npm run assess -- --repo owner/name --pr 413
-  npm run assess -- --diff-file fixtures/positive/remove-dedup-key.diff --repo owner/name
+  npx truth-compiler assess --tenant iris --repo owner/name --pr 413
+  npx truth-compiler assess --tenant iris --repo owner/name --diff-file change.diff --workspace ../iris-web
+  npx truth-compiler compile --tenant iris --out tenants/iris/emitters
+  npx truth-compiler list --tenant iris
 
 Options:
-  --repo owner/name   GitHub repository (required)
-  --source-repo NAME  Repository from which to fetch the PR diff (defaults to --repo)
-  --pr N              Pull request number (fetches the head SHA diff)
+  --tenant NAME       Tenant id (default: iris)
+  --repo owner/name   GitHub repository (required for assess)
+  --source-repo NAME  Repository from which to fetch the PR diff
+  --pr N              Pull request number
   --diff-file PATH    Local unified diff instead of GitHub
+  --workspace DIR     Checkout to prove product, decision, and workspace facts
   --format FORMAT     markdown (default), json, or sarif
-  --json              Alias for --format json
-  --sarif             Alias for --format sarif
-  --enforcement MODE  warning (exit 0) or error (exit 1 on a detected regression)
-  --contracts-dir DIR Load contracts from a custom directory
+  --enforcement MODE  warning (exit 0) or error (exit 1 on a failed blocking truth)
+  --out DIR           Compile emitters to this directory
 `);
 }
 
@@ -84,7 +107,8 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
     throw new Error("Provide --pr or --diff-file");
   }
 
-  const contracts = loadContracts(options.contractsDir);
+  const registry = loadRegistry(options.tenant ?? "iris");
+  const workspace = options.workspace ? createFsWorkspace(resolve(options.workspace)) : undefined;
 
   if (options.diffFile) {
     const raw = readFileSync(options.diffFile, "utf8");
@@ -92,7 +116,8 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
       repo: options.repo,
       diff: parseUnifiedDiff(raw),
       source: options.diffFile,
-      contracts,
+      registry,
+      workspace,
     });
   }
 
@@ -106,13 +131,38 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
     sha: meta.headSha,
     pr: meta.number,
     source: `${sourceRepo}#${meta.number}@${meta.headSha.slice(0, 7)}`,
-    contracts,
+    registry,
+    workspace,
   });
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   try {
     const options = parseArgs(argv);
+    const tenant = options.tenant ?? "iris";
+
+    if (options.command === "list") {
+      const registry = loadRegistry(tenant);
+      const rows = registry.truths.map((truth) => ({
+        id: truth.id,
+        status: truth.status,
+        executor: truth.executor.kind,
+        blocking: truth.executor.blocking,
+        title: truth.title,
+      }));
+      process.stdout.write(`${JSON.stringify({ tenant: registry.tenant, truths: rows }, null, 2)}\n`);
+      return;
+    }
+
+    if (options.command === "compile") {
+      const registry = loadRegistry(tenant);
+      const outDir = resolve(options.outDir ?? `tenants/${tenant}/emitters`);
+      mkdirSync(outDir, { recursive: true });
+      const compiled = writeCompileResult(registry, outDir);
+      process.stdout.write(`Wrote Semgrep and CodeRabbit emitters for ${compiled.tenant} to ${outDir}\n`);
+      return;
+    }
+
     const assessment = await runAssessment(options);
     if (options.format === "json") {
       process.stdout.write(`${JSON.stringify(assessment, null, 2)}\n`);
@@ -121,7 +171,8 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     } else {
       process.stdout.write(renderMarkdown(assessment));
     }
-    if (assessment.verdict === "fail" && options.enforcement !== "warning") {
+    const enforcement = options.enforcement ?? "error";
+    if (assessment.verdict === "fail" && enforcement !== "warning") {
       process.exitCode = 1;
     }
   } catch (error) {

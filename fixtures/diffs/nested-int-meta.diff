@@ -1,0 +1,11 @@
+diff --git a/src/services/admin/source-integrations.service.ts b/src/services/admin/source-integrations.service.ts
+index 1111111..2222222 100644
+--- a/src/services/admin/source-integrations.service.ts
++++ b/src/services/admin/source-integrations.service.ts
+@@ -10,1 +10,4 @@
+-const meta = { name: "page" };
++const meta = {
++  name: "page",
++  apiParams: { timeout: 30, retries: 2 },
++};
++await this.repo.update({ int_meta: meta });

@@ -1,0 +1,38 @@
+id: IRIS-TRUTH-0018
+tenant: iris
+title: CodeRabbit must treat calendar header as a shared shell
+statement: >
+  Review intent for PublisherCalendarHeader belongs in CodeRabbit path
+  instructions. The compiler emits that instruction and does not re-review the
+  diff as a second AI reviewer.
+status: live
+executor:
+  kind: coderabbit
+  blocking: false
+  emit: coderabbit
+  coderabbit_path: src/features/publishing/calendar/**
+  coderabbit_instruction: >
+    PublisherCalendarHeader is a shared shell. A calendar, filter, search, or
+    assets change must keep Generate Campaign visible and wired. Do not accept
+    a layout-only AC as coverage for sibling actions on this header.
+applies_to:
+  repositories:
+    - ignitetech-group/iris-web
+  paths:
+    - src/features/publishing/calendar/**
+  coupling:
+    - publisher-calendar-header
+evidence:
+  - type: confluence
+    url: https://ignitetechpm.atlassian.net/wiki/spaces/ENG/pages/1250263041/CodeRabbit+Guide
+    note: Other AI reviewers run on top of CodeRabbit, never instead
+failure_mechanism: >
+  Ticket AC for a calendar fix did not mention Generate Campaign, so review
+  did not look for it.
+required_guards:
+  - Keep this instruction in the inherited CodeRabbit config
+governance:
+  owner: publisher-maintainers
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

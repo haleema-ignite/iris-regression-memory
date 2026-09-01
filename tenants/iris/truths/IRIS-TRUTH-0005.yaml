@@ -1,0 +1,54 @@
+id: IRIS-TRUTH-0005
+tenant: iris
+title: Shared Care enum columns stay on the legacy allowlist
+statement: >
+  Rows written by IRIS into shared Care schema must use values accepted by
+  legacy Integration.Source and OAuthTokenProvider enums. Unknown platforms
+  must use EXTERNAL/external plus a canonical network key.
+status: live
+legacy_id: IRIS-BEH-0007
+executor:
+  kind: contract
+  blocking: true
+  emit: none
+  forbidden_signals:
+    - "provider: 'applebc'"
+    - "source: 'applebc'"
+    - "int_source = 'YOUTUBE'"
+    - "int_source = 'LINKEDIN'"
+    - "int_source = 'BRANDMESSENGER'"
+    - "oat_provider = 'tiktok'"
+  required_signals:
+    - "careSource = 'EXTERNAL'"
+    - resolveCareIntegrationIdentity
+  mode: both
+applies_to:
+  repositories:
+    - ignitetech-group/iris-api
+  paths:
+    - src/services/admin/source-integrations.service.ts
+    - src/repositories/admin/source-integrations.repository.ts
+    - src/services/*-provisioner.service.ts
+    - src/utils/care-integration-identity.ts
+  coupling:
+    - care-shared-schema
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+evidence:
+  - type: jira
+    key: IRISNG-3518
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3518
+  - type: jira
+    key: IRISNG-3599
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3599
+failure_mechanism: >
+  A modern platform identifier was written into enum-backed columns. Legacy
+  Care parsed the unknown value as null and crashed agent-console login.
+required_guards:
+  - Encode unsupported platforms as EXTERNAL/external with a canonical network key
+governance:
+  owner: care-compatibility-maintainers
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

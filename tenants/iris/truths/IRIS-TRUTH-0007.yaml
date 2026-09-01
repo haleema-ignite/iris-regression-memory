@@ -1,0 +1,56 @@
+id: IRIS-TRUTH-0007
+tenant: iris
+title: Instagram polling watermarks stay durable across restarts
+statement: >
+  Instagram polling must persist watermarks and comment floors across restarts.
+  In-memory-only seen-id sets and disabled persistence recreate duplicate Care
+  comments after a pod restart.
+status: live
+legacy_id: IRIS-BEH-0002
+executor:
+  kind: pattern
+  blocking: true
+  emit: none
+  mode: added_lines
+  forbidden_signals:
+    - POLL_WATERMARK_PERSISTENCE_ENABLED = false
+    - "seenIds: new Set()"
+    - skip persistState
+    - in-memory only dedup
+  forbidden_signal_groups:
+    - [SEEN_ID_TTL_MS = 48 * 60 * 60 * 1000, "mergeSeenIds("]
+  forbidden_line_patterns:
+    - 'persistState\s*\(\s*account\s*,\s*[''"]comments[''"]\s*,\s*\{\s*seenIds\s*:[^,}]+\}\s*\)'
+  required_signals:
+    - commentsFloor
+    - SEEN_ID_TTL_MS
+    - commentFloorMs
+    - isBelowFloor
+applies_to:
+  repositories:
+    - ignitetech-group/iris-sp-engines
+    - ignitetech-group/iris-api
+  paths:
+    - engines/instagram/src/polling/**
+    - engines/instagram/src/instagram-polling-state-client.ts
+    - engines/instagram/src/config.ts
+    - src/repositories/mongodb/instagramPollingState.repository.ts
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+evidence:
+  - type: jira
+    key: IRISNG-3940
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3940
+  - type: rca
+    note: pod5 Facebook DM watermark was in-memory; X engine already persisted
+failure_mechanism: >
+  Seen IDs lived in memory. After restart the collector rescanned without a
+  timestamp floor and republished old comments.
+required_guards:
+  - Persist a non-advancing comments floor and keep durable retention consistent
+governance:
+  owner: social-platform-team
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

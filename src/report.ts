@@ -3,17 +3,19 @@ import type { Assessment, CoverageStatus, Verdict } from "./types.ts";
 export type EnforcementMode = "warning" | "error";
 
 const VERDICT_LABEL: Record<Verdict, string> = {
-  pass: "NO KNOWN REGRESSION",
-  fail: "HISTORICAL REGRESSION DETECTED",
-  inconclusive: "NO APPLICABLE CONTRACT",
+  pass: "SELECTED TRUTHS HOLD",
+  fail: "FACT FAILED",
+  inconclusive: "NO SELECTED TRUTH",
 };
 
 export function renderMarkdown(assessment: Assessment): string {
   const lines: string[] = [
+    "<!-- truth-compiler -->",
     "<!-- iris-regression-memory -->",
-    "# IRIS Behavioral Regression",
+    "# Truth Compiler",
     "",
     `**Verdict:** ${VERDICT_LABEL[assessment.verdict]}`,
+    `**Tenant:** ${assessment.tenant}`,
     `**Repo:** ${assessment.repo}`,
   ];
 
@@ -24,21 +26,33 @@ export function renderMarkdown(assessment: Assessment): string {
     lines.push(`**SHA:** \`${assessment.sha}\``);
   }
   lines.push(`**Source:** ${assessment.source}`);
-  lines.push(`**Contracts loaded:** ${assessment.contractsLoaded}`);
-  lines.push(`**Contracts evaluated:** ${assessment.contractsEvaluated}`);
-  lines.push(`**Retrieved:** ${assessment.retrieved.join(", ") || "none"}`);
+  lines.push(`**Truths loaded:** ${assessment.truthsLoaded}`);
+  lines.push(`**Truths evaluated:** ${assessment.truthsEvaluated}`);
+  lines.push(`**Selected:** ${assessment.selected.join(", ") || "none"}`);
   lines.push(
-    `**Coverage:** ${assessment.coverage.status} ` +
+    `**File coverage:** ${assessment.coverage.status} ` +
     `(${assessment.coverage.coveredFiles.length}/${assessment.coverage.reviewableFiles.length} reviewable files)`,
   );
+  lines.push(
+    `**Truth coverage:** ${assessment.truthCoverage.failed} failed / ${assessment.truthCoverage.passed} passed / ${assessment.truthCoverage.live} live for this repo`,
+  );
   lines.push("");
+
+  if (assessment.truthCoverage.gaps.length > 0) {
+    lines.push("## Visible gaps");
+    lines.push("");
+    lines.push("These facts are in the registry but not yet live. They are unfinished coverage, not out of scope.");
+    lines.push("");
+    for (const gap of assessment.truthCoverage.gaps) {
+      lines.push(`- \`${gap.truthId}\` (${gap.status}, ${gap.executor}): ${gap.title}`);
+    }
+    lines.push("");
+  }
 
   if (assessment.coverage.uncoveredFiles.length > 0) {
     lines.push("## Uncovered files");
     lines.push("");
-    lines.push(
-      "These files were not covered by any contract. A non-failing result does not assert that they are behaviorally safe.",
-    );
+    lines.push("These files were not covered by a live truth. A non-failing result does not assert that they are safe.");
     lines.push("");
     for (const path of assessment.coverage.uncoveredFiles.slice(0, 20)) {
       lines.push(`- \`${path}\``);
@@ -52,7 +66,7 @@ export function renderMarkdown(assessment: Assessment): string {
   if (assessment.coverage.unavailableFiles.length > 0) {
     lines.push("## Unavailable patches");
     lines.push("");
-    lines.push("GitHub did not provide line patches for these files. They were not adjudicated and count as uncovered.");
+    lines.push("GitHub did not provide line patches for these files. Pattern checks did not adjudicate them.");
     lines.push("");
     for (const path of assessment.coverage.unavailableFiles.slice(0, 20)) {
       lines.push(`- \`${path}\``);
@@ -61,7 +75,7 @@ export function renderMarkdown(assessment: Assessment): string {
   }
 
   if (assessment.verdict === "inconclusive") {
-    lines.push("No changed file with an available patch matched an approved contract. This is not a safety assertion and does not block in warning mode.");
+    lines.push("No live truth was selected for this change. This is not a safety assertion.");
     lines.push("");
     return lines.join("\n");
   }
@@ -70,31 +84,39 @@ export function renderMarkdown(assessment: Assessment): string {
   lines.push("");
 
   for (const finding of assessment.findings) {
-    lines.push(`### ${finding.contractId} — ${finding.verdict.toUpperCase()}`);
+    lines.push(`### ${finding.truthId} — ${finding.verdict.toUpperCase()} (${finding.executor}${finding.blocking ? ", blocking" : ""})`);
     lines.push(`**${finding.title}**`);
+    lines.push("");
+    lines.push(finding.statement.trim());
     lines.push("");
     lines.push(finding.reason);
     lines.push("");
     lines.push(`- Evidence: ${finding.evidence.detail}${finding.evidence.path ? ` (\`${finding.evidence.path}\`)` : ""}`);
-    lines.push(`- Required guard: ${finding.requiredGuards[0] ?? "(none listed)"}`);
+    lines.push(`- Matched because: ${finding.matchReasons.join(", ")}`);
+    if (finding.emit !== "none") {
+      lines.push(`- Also emitted to: ${finding.emit}`);
+    }
+    if (finding.requiredGuards[0]) {
+      lines.push(`- Required guard: ${finding.requiredGuards[0]}`);
+    }
     const refs = finding.references
-      .map((ref) => ref.key ?? ref.url)
+      .map((ref) => ref.key ?? ref.url ?? ref.note)
       .filter(Boolean)
       .join(", ");
     if (refs) {
-      lines.push(`- Incident: ${refs}`);
+      lines.push(`- Evidence refs: ${refs}`);
     }
     lines.push("");
   }
 
-  lines.push("_Semantic similarity alone cannot fail. Failures require an explicit violation signal in added lines or an explicit historical guard signal removed from a path-matched file._");
+  lines.push("_The compiler does not LLM-judge a diff. Failures are fact id + evidence. Pattern facts are also emitted to Semgrep; review intent is emitted to CodeRabbit._");
   lines.push("");
   return lines.join("\n");
 }
 
 export function checkConclusion(
   verdict: Verdict,
-  enforcement: EnforcementMode = "warning",
+  enforcement: EnforcementMode = "error",
   coverage: CoverageStatus = "full",
 ): "success" | "neutral" | "failure" {
   if (verdict === "fail") return enforcement === "error" ? "failure" : "neutral";

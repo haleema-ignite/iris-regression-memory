@@ -1,0 +1,28 @@
+id: IRIS-TRUTH-0016
+tenant: iris
+title: Live LIQL bulk board listing omits hidden boards
+statement: >
+  Hidden-board coverage is not proven by a stubbed bulk map. Live LIQL omits
+  hidden boards from SELECT FROM boards listings, so a missing map entry must
+  be resolved by id. This truth stays a gap until a live LIQL probe exists.
+status: gap
+executor:
+  kind: contract
+  blocking: false
+  emit: none
+applies_to:
+  repositories:
+    - ignitetech-group/iris-sp-engines
+  paths:
+    - engines/community/src/polling/**
+evidence:
+  - type: jira
+    key: IRISNG-3231
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3231
+failure_mechanism: >
+  722 unit tests passed while live LIQL behavior was the opposite of the mock.
+required_guards:
+  - Add a live LIQL listing probe and bind it as a contract fixture
+governance:
+  owner: social-platform-team
+  version: 1

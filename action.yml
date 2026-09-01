@@ -1,17 +1,25 @@
-name: Behavioral Regression Memory
-description: Detect approved historical failure mechanisms in pull-request diffs.
+name: Truth Compiler
+description: Compile recorded product and contract truths and fail the PR when a fact is no longer true.
 inputs:
   token:
     description: GitHub token used to read the pull-request diff and write the comment and Check Run.
     required: true
+  tenant:
+    description: Tenant id under tenants/. Defaults to iris.
+    required: false
+    default: iris
   target_repository:
-    description: Repository whose behavioral contracts should be applied. Defaults to the pull-request repository.
+    description: Repository whose truths should be applied. Defaults to the pull-request repository.
+    required: false
+    default: ""
+  workspace:
+    description: Checkout used to prove product, decision, and workspace facts. Defaults to GITHUB_WORKSPACE.
     required: false
     default: ""
   enforcement:
     description: warning produces a neutral check for findings; error produces a failing check and exit code.
     required: false
-    default: warning
+    default: error
   comment:
     description: Whether to create or update the sticky pull-request comment.
     required: false

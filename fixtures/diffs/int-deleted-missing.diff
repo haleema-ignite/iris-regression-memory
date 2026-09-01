@@ -1,0 +1,7 @@
+diff --git a/src/repositories/admin/source-integrations.repository.ts b/src/repositories/admin/source-integrations.repository.ts
+index 1111111..2222222 100644
+--- a/src/repositories/admin/source-integrations.repository.ts
++++ b/src/repositories/admin/source-integrations.repository.ts
+@@ -20,1 +20,2 @@
+-const sql = "SELECT id FROM int_integration WHERE int_com_id = ? AND int_deleted = 0";
++const sql = "SELECT id FROM int_integration WHERE int_com_id = ?";

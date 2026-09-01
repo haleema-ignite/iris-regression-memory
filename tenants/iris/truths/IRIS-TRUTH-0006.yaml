@@ -1,0 +1,50 @@
+id: IRIS-TRUTH-0006
+tenant: iris
+title: Care int_meta values remain a flat string map
+statement: >
+  Values written into Care int_meta must be serializable as Map<String,String>.
+  Nested objects such as int_meta.apiParams must not be written as objects.
+status: live
+executor:
+  kind: contract
+  blocking: true
+  emit: semgrep
+  languages:
+    - typescript
+    - javascript
+  forbidden_line_patterns:
+    - "apiParams\\s*:\\s*\\{"
+    - "int_meta\\.apiParams\\s*=\\s*\\{"
+  forbidden_signals:
+    - "int_meta: { apiParams"
+  mode: both
+applies_to:
+  repositories:
+    - ignitetech-group/iris-api
+  paths:
+    - src/services/**/*provisioner*
+    - src/services/admin/source-integrations*
+    - src/repositories/admin/source-integrations*
+    - src/utils/care-integration-identity.ts
+  coupling:
+    - care-shared-schema
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+evidence:
+  - type: jira
+    key: IRISNG-4090
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-4090
+  - type: jira
+    key: IRISNG-3518
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3518
+failure_mechanism: >
+  iris-api wrote a nested apiParams object. Java Map<String,String> failed and
+  Care console returned 500. Tests encoded the wrong contract.
+required_guards:
+  - Flatten or stringify every int_meta value Care consumes
+governance:
+  owner: care-compatibility-maintainers
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

@@ -1,0 +1,43 @@
+id: IRIS-TRUTH-0014
+tenant: iris
+title: Resolve Instagram DM author profiles instead of numeric IGSIDs
+statement: >
+  Instagram Direct Message authors must be published with a resolved username
+  or display name, not the raw numeric IGSID, when Graph profile lookup succeeds.
+status: live
+legacy_id: IRIS-BEH-0005
+executor:
+  kind: pattern
+  blocking: true
+  emit: none
+  mode: added_lines
+  forbidden_signals:
+    - author.username = sender.id
+    - skip getMessagingUserProfile
+    - "displayName: igsid"
+  required_signals:
+    - getMessagingUserProfile
+applies_to:
+  repositories:
+    - ignitetech-group/iris-sp-engines
+  paths:
+    - engines/instagram/src/webhook/**
+    - engines/instagram/src/instagram-api/client.ts
+    - engines/instagram/src/instagram-api/transformer.ts
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+evidence:
+  - type: jira
+    key: IRISNG-4026
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-4026
+failure_mechanism: >
+  Webhook DMs carried only sender.id. Without a messaging-user profile lookup,
+  Care rendered the numeric IGSID as the customer name.
+required_guards:
+  - Resolve messaging user profile before publish
+governance:
+  owner: social-platform-team
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

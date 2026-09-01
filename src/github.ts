@@ -44,7 +44,7 @@ async function githubFetch<T>(path: string, init?: RequestInit): Promise<T> {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${token}`,
       "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "iris-regression-memory",
+      "User-Agent": "truth-compiler",
       ...(init?.headers ?? {}),
     },
   });
@@ -113,10 +113,12 @@ export async function upsertStickyComment(
   repo: string,
   pr: number,
   body: string,
-  marker = "<!-- iris-regression-memory -->",
+  marker = "<!-- truth-compiler -->",
 ): Promise<void> {
   const comments = await fetchIssueComments(repo, pr);
-  const existing = comments.find((comment) => comment.body?.includes(marker));
+  const existing = comments.find((comment) =>
+    comment.body?.includes(marker) || comment.body?.includes("<!-- iris-regression-memory -->"),
+  );
   if (existing) {
     await updateIssueComment(repo, existing.id, body);
     return;

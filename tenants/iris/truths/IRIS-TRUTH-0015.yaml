@@ -1,0 +1,45 @@
+id: IRIS-TRUTH-0015
+tenant: iris
+title: Keep Brand Messenger ingest idempotent on doc_src_id
+statement: >
+  The same Brand Messenger platform message id must produce one logical
+  document. Retries and dual publishers must not insert a second row.
+status: live
+legacy_id: IRIS-BEH-0006
+executor:
+  kind: pattern
+  blocking: true
+  emit: none
+  mode: added_lines
+  forbidden_signals:
+    - new Date() as doc_src_id
+    - uuid as message id
+    - skip doc_src_id
+  required_signals:
+    - doc_src_id
+applies_to:
+  repositories:
+    - ignitetech-group/iris-sp-engines
+    - ignitetech-group/iris-api
+  paths:
+    - engines/brand-messenger/**
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+evidence:
+  - type: jira
+    key: IRISNG-3729
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3729
+  - type: jira
+    key: IRISNG-3836
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3836
+failure_mechanism: >
+  Ingest used a derived or unstable identity, so a retried webhook created
+  duplicate doc_document rows.
+required_guards:
+  - Stable platform message id as doc_src_id
+governance:
+  owner: social-platform-team
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

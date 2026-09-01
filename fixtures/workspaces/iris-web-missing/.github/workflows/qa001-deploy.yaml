@@ -1,0 +1,6 @@
+name: Promote
+on: workflow_dispatch
+jobs:
+  iris-e2e-gate:
+    with:
+      test_grep: ${{ github.event_name == 'workflow_dispatch' && inputs.e2e_scope == 'promotion' && 'IRISNG-188[45]' || '' }}

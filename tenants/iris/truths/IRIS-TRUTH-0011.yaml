@@ -1,0 +1,48 @@
+id: IRIS-TRUTH-0011
+tenant: iris
+title: Accept mixed Meta app webhook signatures during rotation
+statement: >
+  A Meta webhook signed with any currently configured app secret for the
+  receiving page or account must verify. Rotation must not drop events signed
+  by the previous app while both secrets are live.
+status: live
+legacy_id: IRIS-BEH-0003
+executor:
+  kind: pattern
+  blocking: true
+  emit: none
+  mode: added_lines
+  forbidden_signals:
+    - verify against CONFIG only
+    - ignore page appSecret
+    - JSON.stringify(parsedBody)
+  required_signals:
+    - getWebhookSecretCandidates
+    - verifyMetaWebhookSignature
+applies_to:
+  repositories:
+    - ignitetech-group/iris-sp-engines
+  paths:
+    - engines/facebook/src/webhook/**
+    - engines/instagram/src/webhook/**
+    - engines/facebook/src/runtime-pages.ts
+    - engines/instagram/src/runtime-accounts.ts
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+evidence:
+  - type: jira
+    key: IRISNG-3905
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3905
+  - type: github
+    url: https://github.com/ignitetech-group/iris-sp-engines/pull/389
+failure_mechanism: >
+  Verification used a single process-wide app secret. Events from pages still
+  on the previous Meta app failed HMAC checks and were discarded.
+required_guards:
+  - Verify HMAC against the page or account app secret when present
+governance:
+  owner: social-platform-team
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

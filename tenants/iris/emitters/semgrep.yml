@@ -1,0 +1,44 @@
+rules:
+  - id: truth-compiler.IRIS-TRUTH-0006
+    message: "IRIS-TRUTH-0006: Values written into Care int_meta must be
+      serializable as Map<String,String>. Nested objects such as
+      int_meta.apiParams must not be written as objects."
+    languages:
+      - typescript
+      - javascript
+    severity: ERROR
+    metadata:
+      truth_id: IRIS-TRUTH-0006
+      executor: contract
+      source: truth-compiler
+    paths:
+      include:
+        - src/services/**/*provisioner*
+        - src/services/admin/source-integrations*
+        - src/repositories/admin/source-integrations*
+        - src/utils/care-integration-identity.ts
+      exclude:
+        - "**/*.test.ts"
+        - "**/__tests__/**"
+    pattern-regex: "(apiParams\\s*:\\s*\\{|int_meta\\.apiParams\\s*=\\s*\\{|int_met\
+      a: \\{ apiParams)"
+  - id: truth-compiler.IRIS-TRUTH-0019
+    message: "IRIS-TRUTH-0019: Queries must not use LIKE '%…%' against int_meta or
+      other large Care tables. Leading wildcards cannot use indexes and were a
+      blast-radius amplifier."
+    languages:
+      - typescript
+      - javascript
+      - java
+    severity: ERROR
+    metadata:
+      truth_id: IRIS-TRUTH-0019
+      executor: semgrep
+      source: truth-compiler
+    paths:
+      include:
+        - src/**/*.ts
+      exclude:
+        - "**/*.test.ts"
+        - "**/__tests__/**"
+    pattern-regex: (LIKE\s+['"]%|int_meta LIKE '%)

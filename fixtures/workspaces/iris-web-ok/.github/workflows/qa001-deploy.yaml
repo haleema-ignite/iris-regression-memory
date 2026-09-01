@@ -1,0 +1,6 @@
+name: Promote
+on: workflow_dispatch
+jobs:
+  iris-e2e-gate:
+    with:
+      test_grep: "P14|Generate Campaign"

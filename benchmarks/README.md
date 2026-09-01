@@ -13,6 +13,6 @@ npm run evaluate:local -- --workspace /absolute/path/to/IRIS
 
 The evaluator uses `git diff base...head`, matching GitHub's merge-base review semantics. Reverse cases use the exact inverse of a historical fixing diff and are labeled counterfactual reintroductions; they are not presented as real historical pull requests.
 
-The 32-case manifest combines the original historical replay set with 12 validation PRs frozen before the engine-side watermark rule was added. Three of the additions are untouched same-path controls and nine are uncovered controls. This strengthens precision evidence but does not make the positive incident cases a holdout.
+The 32-case manifest combines the original historical replay set with 12 validation PRs frozen before the engine-side watermark rule was added. Case `contract` ids are the legacy IRIS-BEH labels; the compiler now evaluates the migrated `IRIS-TRUTH-*` facts. Three of the additions are untouched same-path controls and nine are uncovered controls.
 
 The benchmark is useful for local product development, but it is not a general accuracy guarantee: the contracts were derived from these incident families, and some detection signals were refined after baseline replay. A team decision should therefore consider the untouched controls, explicit abstentions, per-file coverage, and a future prospective shadow run—not headline recall alone.

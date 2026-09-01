@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:truth-compiler:catalog:v1",
+  "title": "Truth Compiler catalogs",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "artifact", "always_on", "repositories", "truth_ids"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "artifact": { "type": "string" },
+          "always_on": { "type": "boolean" },
+          "repositories": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "truth_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "statement", "paths", "truth_ids"],
+        "properties": {
+          "id": { "type": "string" },
+          "statement": { "type": "string" },
+          "paths": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "markers": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "truth_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,107 +1,93 @@
-# IRIS Regression Memory
+# Truth Compiler
 
-IRIS Regression Memory is a deterministic review layer for behavior that is valid code but unsafe in context. It turns resolved production incidents into small, approved contracts and checks pull-request diffs for the exact failure mechanisms that caused them.
+Stop adding reviewers. Compile facts.
 
-The repository is public-safe by design. Contracts contain issue keys, pull-request numbers, technical invariants, paths, and guard signals. They must not contain customer data, copied incident conversations, credentials, internal hostnames, or personal attribution.
+Truth Compiler learns a GitHub system and keeps a **single registry of facts that must remain true**. On every pull request it classifies each fact onto the cheapest correct executor — Semgrep, CodeRabbit, a contract fixture, a product presence check, or a leftover-decision scan — and **fails if that executor fails**.
 
-## Safety model
+IRIS is tenant zero, not the product. Point it at another org, incidents, and UI catalog, and it learns that system instead.
 
-A finding is reported only when all of these are true:
+This repository used to be a weak diff-string “regression memory.” That engine could only fail when an added line contained a remembered snippet. It could not prove Generate Campaign was still on the calendar, could not see a leftover SocialGateway gate outside the diff, and it duplicated work CodeRabbit and Semgrep already do. This release replaces it.
 
-1. The contract is `approved`.
-2. The target repository matches the contract.
-3. A changed production path matches the contract and is not excluded.
-4. An added line contains an explicit `violation_signal`, matches an approved `violation_line_pattern`, one file contains every member of an approved `violation_signal_group`, or the diff removes an explicit `removal_signal` without a replacement.
+## What it is not
 
-Similarity, keywords outside the scoped paths, and retrieval rank cannot fail a review. A change with no applicable contract is `inconclusive`, never `pass`. Partial path coverage is displayed explicitly.
+- Not a second CodeRabbit. IgniteTech policy: other AI reviewers run **on top of** CodeRabbit, never instead of it.
+- Not a second Semgrep. Pattern facts are **emitted** as Semgrep rules and also proven in-process so the fact is not stuck in a drawer.
+- Not an LLM merge gate. Models may propose truths. They do not decide the verdict.
+
+## Executors
+
+| If the fact is… | Executor |
+| --- | --- |
+| A bad shape in one language (`LIKE '%x%'`, nested `apiParams`) | `pattern` / `semgrep` |
+| Ticket intent, local design, shared-shell review judgment | `coderabbit` (emit path instruction; compiler does not re-review) |
+| Two sides must agree (Care `int_meta` is `Map<String,String>`) | `contract` |
+| The customer can still do the thing (Generate Campaign) | `product` |
+| A finished decision left a leftover gate | `decision` (scans checkout, not only the diff) |
+
+Inclusive matching: path hit, coupling (calendar header owns Generate Campaign), always-on product catalog, and stale-decision scan.
 
 ## Run it
 
 ```bash
 npm ci
+npm test
 
-# A GitHub pull request. Requires GITHUB_TOKEN, GH_TOKEN, or authenticated gh.
-npm run assess -- --repo ignitetech-group/iris-sp-engines --pr 413
+# Local diff against the IRIS tenant
+npm run assess -- --tenant iris --repo ignitetech-group/iris-web \
+  --diff-file change.diff --workspace /path/to/iris-web --enforcement error
 
-# A local unified diff.
-npm run assess -- \
-  --repo ignitetech-group/iris-sp-engines \
-  --diff-file fixtures/replay/instagram-watermark-fix-reverse.diff
-
-# Machine-readable integrations.
-npm run assess -- --repo ignitetech-group/iris-sp-engines --diff-file change.diff --json
-npm run assess -- --repo ignitetech-group/iris-sp-engines --diff-file change.diff --sarif
+# Emit Semgrep rules and CodeRabbit path instructions
+npm run compile
 ```
 
-The CLI exits nonzero for detected regressions by default. Use `--enforcement warning` during rollout to keep findings advisory.
+CLI exits nonzero for a failed **blocking** truth in `error` mode (the default). Use `--enforcement warning` only while wiring a new tenant.
 
-## GitHub Action
+## GitHub Action (IRIS-ready)
+
+Copy `examples/iris-service.yml` into `iris-web`, `iris-api`, `iris-sp-engines`, and `iris-e2e`. The Action uses the **service checkout** as the workspace. Product and leftover-decision truths cannot be proven from a diff alone.
 
 ```yaml
-name: Behavioral regression review
-on:
-  pull_request:
-
-permissions:
-  contents: read
-  pull-requests: write
-  checks: write
-
-jobs:
-  regression-memory:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: YOUR_ORG/iris-regression-memory@v0.3.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          enforcement: warning
-          comment: "true"
+- uses: haleema-ignite/iris-regression-memory@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    tenant: iris
+    enforcement: error
 ```
 
-The Action creates a sticky pull-request comment and a Check Run. In `warning` mode, a detected historical regression is neutral; in `error` mode it is a failure. Roll out in warning mode, measure precision, then protect the check only after contract owners approve enforcement.
+### Current IRIS HEAD
 
-If a fixture repository is reviewing changes on behalf of another codebase, set `target_repository` to the repository whose contracts should apply.
+Some live truths describe bugs that are **still in tree**. Adding the Action will fail until those facts become true:
 
-## Local MCP server
+- `IRIS-TRUTH-0003` — QA promotion still greps only `IRISNG-188[45]`, so Generate Campaign P14 is not on the blocking path.
+- `IRIS-TRUTH-0009` — Marketing Meta shared mode still hard-requires `SOCIALGATEWAY_*` in `iris-api`.
 
-Build and expose the same read-only assessment engine to an MCP client:
+That is the ratchet, not a false positive. Fix the fact or temporarily mark the truth `proposed` — do not delete it.
+
+## Tenant layout
+
+```text
+tenants/
+  schema/                 Generic JSON Schema (any GitHub org)
+  iris/                   Tenant zero
+    tenant.yaml
+    catalog/
+      product-surfaces.yaml
+      coupling.yaml
+    truths/*.yaml
+    emitters/             Generated Semgrep + CodeRabbit fragments
+```
+
+A truth is `live` (can fail), `proposed` (human has not accepted it), or `gap` (unfinished coverage, still visible). Gaps are not “out of scope.”
+
+## Safety
+
+Public truths contain issue keys, paths, and technical invariants. They must not contain customer data, credentials, copied Slack, or personal attribution.
+
+## MCP
 
 ```bash
 npm run build
-node /absolute/path/to/iris-regression-memory/dist/mcp.cjs
+node dist/mcp.cjs
 ```
 
-Available tools are `assess_diff`, `assess_pull_request`, `list_contracts`, and `get_contract`. The server uses stdio, writes protocol messages only to stdout, and does not mutate repositories or contracts.
-
-## Outcomes
-
-| Outcome | Meaning |
-| --- | --- |
-| `historical_regression_detected` | A path-matched approved contract found an explicit violation or removed guard. |
-| `no_known_regression` | At least one contract applied and none detected its known failure mechanism. This is not a general correctness claim. |
-| `no_applicable_contract` | No contract applied. The result is inconclusive and makes no safety assertion. |
-
-Every result also reports contract coverage as `none`, `partial`, or `full` over reviewable changed files.
-
-## Local evaluation
-
-The v0.3.0 candidate was replayed against a 32-case local benchmark built from immutable Git history. It detected all 10 encoded culprit or reintroduction cases, passed all 10 safe applicable changes, correctly abstained on all 12 uncovered changes, and produced no false positives in this bounded set.
-
-This is regression-suite evidence, not a claim of universal accuracy. See the [benchmark guide](benchmarks/README.md) and [detailed evaluation report](reports/local-evaluation-2026-08-30.md) for methodology, per-case limitations, and reproduction instructions.
-
-## Repository map
-
-```text
-contracts/schema.json          Contract validation schema
-contracts/iris/*.yaml         Sanitized approved contracts
-fixtures/positive/            Synthetic violations
-fixtures/negative/            Safe changes
-fixtures/replay/              Sanitized historical forward/reverse replays
-src/                          Shared engine, CLI, Action, SARIF, and MCP adapters
-docs/                         Architecture, evaluation, and authoring guidance
-benchmarks/                    Immutable local historical PR benchmark manifest
-reports/                       Public-safe local evaluation reports
-tests/unit/                    Deterministic contract and replay tests
-```
-
-See [docs/architecture.md](docs/architecture.md), [docs/contract-authoring.md](docs/contract-authoring.md), and [docs/evaluation.md](docs/evaluation.md).
+Tools: `assess_diff`, `assess_pull_request`, `list_truths`, `get_truth`, `compile_emitters`.

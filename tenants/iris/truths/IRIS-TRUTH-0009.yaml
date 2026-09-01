@@ -1,0 +1,49 @@
+id: IRIS-TRUTH-0009
+tenant: iris
+title: Marketing Meta shared mode must not require SOCIALGATEWAY secrets
+statement: >
+  After publishing moved off SocialGateway, Marketing Meta shared-mode code
+  must not still require SOCIALGATEWAY_FACEBOOK_* or SOCIALGATEWAY_INSTAGRAM_*
+  as a hard gate.
+status: live
+executor:
+  kind: decision
+  blocking: true
+  emit: none
+  leftover_tokens:
+    - SOCIALGATEWAY_FACEBOOK_APP_ID is required for Marketing Facebook
+    - SOCIALGATEWAY_FACEBOOK_APP_SECRET is required
+    - SOCIALGATEWAY_INSTAGRAM_APP_ID (or SOCIALGATEWAY_FACEBOOK_APP_ID fallback) is required for Marketing Instagram
+  files:
+    - src/services/smm/content-sources.service.ts
+    - src/services/oauth/facebook.oauth.ts
+    - src/services/oauth/instagram.oauth.ts
+  allowlist_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+applies_to:
+  repositories:
+    - ignitetech-group/iris-api
+  paths:
+    - src/services/smm/content-sources.service.ts
+    - src/services/oauth/facebook.oauth.ts
+    - src/services/oauth/instagram.oauth.ts
+    - src/services/oauth/marketing-meta*
+  scan_workspace: true
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+evidence:
+  - type: jira
+    key: IRISNG-3905
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3905
+failure_mechanism: >
+  A leftover SocialGateway credential gate survived after the decision to
+  publish without SocialGateway. The dangerous file is often not in the PR.
+required_guards:
+  - Remove SOCIALGATEWAY hard-requires from Marketing Meta shared mode
+governance:
+  owner: social-platform-team
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

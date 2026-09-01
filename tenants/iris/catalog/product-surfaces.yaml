@@ -1,0 +1,19 @@
+surfaces:
+  - id: generate-campaign
+    name: Generate Campaign
+    artifact: iris-web
+    always_on: true
+    repositories:
+      - ignitetech-group/iris-web
+    truth_ids:
+      - IRIS-TRUTH-0001
+      - IRIS-TRUTH-0002
+      - IRIS-TRUTH-0003
+  - id: generate-campaign-e2e
+    name: Generate Campaign E2E presence
+    artifact: iris-e2e
+    always_on: true
+    repositories:
+      - ignitetech-group/iris-e2e
+    truth_ids:
+      - IRIS-TRUTH-0004

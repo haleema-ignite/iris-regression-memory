@@ -1,0 +1,7 @@
+diff --git a/src/controllers/orchestrator.controller.ts b/src/controllers/orchestrator.controller.ts
+index 1111111..2222222 100644
+--- a/src/controllers/orchestrator.controller.ts
++++ b/src/controllers/orchestrator.controller.ts
+@@ -40,1 +40,2 @@
+-ORDER BY id
++ORDER BY (CASE WHEN i.int_meta LIKE '%irisAiDeployment%' THEN 0 ELSE 1 END) ASC

@@ -1,0 +1,9 @@
+diff --git a/engines/community/src/polling/filtering.ts b/engines/community/src/polling/filtering.ts
+index 1111111..2222222 100644
+--- a/engines/community/src/polling/filtering.ts
++++ b/engines/community/src/polling/filtering.ts
+@@ -12,3 +12,3 @@
+-if (!board) return "fail closed";
+-if (board.hidden && !includeHidden) return "hidden";
++if (!board) return "treat missing board as visible";
++// fail open when the bulk map omitted a hidden board

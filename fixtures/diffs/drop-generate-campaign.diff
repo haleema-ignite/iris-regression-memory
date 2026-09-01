@@ -1,0 +1,13 @@
+diff --git a/src/features/publishing/calendar/components/PublisherCalendarHeader.tsx b/src/features/publishing/calendar/components/PublisherCalendarHeader.tsx
+index 1111111..2222222 100644
+--- a/src/features/publishing/calendar/components/PublisherCalendarHeader.tsx
++++ b/src/features/publishing/calendar/components/PublisherCalendarHeader.tsx
+@@ -1,8 +1,4 @@
+ export function PublisherCalendarHeader({ onGenerateCampaign }) {
+   return (
+-    <button onClick={() => onGenerateCampaign?.()}>
+-      Generate Campaign
+-    </button>
++    <button>Filters</button>
+   );
+ }

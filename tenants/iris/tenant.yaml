@@ -1,0 +1,9 @@
+id: iris
+name: IRIS
+github_org: ignitetech-group
+repositories:
+  - ignitetech-group/iris-web
+  - ignitetech-group/iris-api
+  - ignitetech-group/iris-sp-engines
+  - ignitetech-group/iris-e2e
+default_enforcement: error

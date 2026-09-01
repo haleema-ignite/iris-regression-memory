@@ -1,0 +1,30 @@
+id: IRIS-TRUTH-0017
+tenant: iris
+title: Publisher AI customer actions remain reachable
+statement: >
+  Publisher AI actions that agents used from the calendar and composer must
+  remain reachable after calendar and assets refactors. This stays a gap until
+  a stable source selector is named the same way Generate Campaign is.
+status: gap
+executor:
+  kind: product
+  blocking: false
+  emit: none
+  files:
+    - src/features/publishing/calendar/PublisherCalendarPage.tsx
+applies_to:
+  repositories:
+    - ignitetech-group/iris-web
+  paths:
+    - src/features/publishing/**
+  always_on: true
+evidence:
+  - type: slack
+    note: Publisher AI broken after calendar and assets fixes
+failure_mechanism: >
+  Shared-shell refactors dropped a customer action that had no named presence check.
+required_guards:
+  - Name the Publisher AI entry points and convert this gap to a live product truth
+governance:
+  owner: publisher-maintainers
+  version: 1

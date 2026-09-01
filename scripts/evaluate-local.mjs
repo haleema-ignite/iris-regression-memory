@@ -106,11 +106,11 @@ for (const item of manifest.cases) {
 
   const assessmentRun = run(
     process.execPath,
-    [cliPath, "--repo", item.repository, "--diff-file", "/dev/stdin", "--json"],
+    [cliPath, "assess", "--tenant", "iris", "--repo", item.repository, "--diff-file", "/dev/stdin", "--json"],
     {
       cwd: repoRoot,
       input: diff.stdout,
-      env: { ...process.env, IRIS_REGRESSION_MEMORY_ROOT: repoRoot },
+      env: { ...process.env, TRUTH_COMPILER_ROOT: repoRoot, IRIS_REGRESSION_MEMORY_ROOT: repoRoot },
     },
   );
   if (!assessmentRun.stdout.trim()) {
@@ -132,7 +132,8 @@ for (const item of manifest.cases) {
     durationMs: Number((performance.now() - startedAt).toFixed(1)),
     outcome: assessment.outcome,
     findings: assessment.findings.map((finding) => ({
-      contractId: finding.contractId,
+      truthId: finding.truthId ?? finding.contractId,
+      executor: finding.executor,
       verdict: finding.verdict,
       evidence: finding.evidence,
     })),

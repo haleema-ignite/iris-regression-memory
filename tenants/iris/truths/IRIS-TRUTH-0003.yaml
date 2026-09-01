@@ -1,0 +1,37 @@
+id: IRIS-TRUTH-0003
+tenant: iris
+title: QA promotion must not smoke only IRISNG-1884 and IRISNG-1885
+statement: >
+  Manual QA promotion for iris-web must not grep only IRISNG-1884 and
+  IRISNG-1885. That path can announce a build while Generate Campaign is gone.
+status: live
+executor:
+  kind: product
+  blocking: true
+  emit: none
+  files:
+    - .github/workflows/qa001-deploy.yaml
+  must_not_contain:
+    - "IRISNG-188[45]"
+applies_to:
+  repositories:
+    - ignitetech-group/iris-web
+  paths:
+    - .github/workflows/qa001-deploy.yaml
+  always_on: true
+  scan_workspace: true
+evidence:
+  - type: e2e
+    key: P14
+    note: P14 exists in iris-e2e but is not on the promotion grep
+  - type: github
+    note: iris-web qa001-deploy.yaml promotion test_grep
+failure_mechanism: >
+  The product truth lived in a drawer. Promotion grepped two unrelated tickets.
+required_guards:
+  - Promotion grep must include Generate Campaign or publisherCoverage P14
+governance:
+  owner: publisher-maintainers
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

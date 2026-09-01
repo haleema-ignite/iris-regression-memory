@@ -3,20 +3,20 @@ import type { Assessment } from "./types.ts";
 export function renderSarif(assessment: Assessment): object {
   const failed = assessment.findings.filter((finding) => finding.verdict === "fail");
   const rules = failed.map((finding) => ({
-    id: finding.contractId,
-    name: finding.contractId,
+    id: finding.truthId,
+    name: finding.truthId,
     shortDescription: { text: finding.title },
     fullDescription: { text: finding.reason },
     helpUri: finding.references.find((reference) => reference.url)?.url,
     properties: {
-      tags: ["behavioral-regression", "incident-memory"],
+      tags: ["truth-compiler", finding.executor],
       precision: "high",
     },
   }));
 
   const results = failed.map((finding) => ({
-    ruleId: finding.contractId,
-    level: "warning",
+    ruleId: finding.truthId,
+    level: finding.blocking ? "error" : "warning",
     message: {
       text: `${finding.reason} Evidence: ${finding.evidence.detail}`,
     },
@@ -32,6 +32,7 @@ export function renderSarif(assessment: Assessment): object {
     properties: {
       assessmentOutcome: assessment.outcome,
       coverage: assessment.coverage.status,
+      executor: finding.executor,
     },
   }));
 
@@ -41,16 +42,18 @@ export function renderSarif(assessment: Assessment): object {
     runs: [{
       tool: {
         driver: {
-          name: "iris-regression-memory",
-          semanticVersion: "0.3.0",
+          name: "truth-compiler",
+          semanticVersion: "1.0.0",
           rules,
         },
       },
       automationDetails: { id: assessment.source },
       results,
       properties: {
+        tenant: assessment.tenant,
         repository: assessment.repo,
         coverage: assessment.coverage,
+        truthCoverage: assessment.truthCoverage,
       },
     }],
   };

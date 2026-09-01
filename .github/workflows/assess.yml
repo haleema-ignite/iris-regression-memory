@@ -1,7 +1,7 @@
-name: Assess behavioral contracts
+name: Assess truths on this repository
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
@@ -11,23 +11,19 @@ permissions:
 
 jobs:
   assess:
-    name: regression-memory
+    name: truth-compiler
     runs-on: ubuntu-latest
     steps:
-      # Never execute code from the pull-request head in a privileged workflow.
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: Assess untrusted diff with trusted base code
+      - name: Assess this pull request
         run: node dist/action.cjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REGRESSION_MEMORY_TARGET_REPOSITORY: ignitetech-group/iris-sp-engines
-          REGRESSION_MEMORY_ENFORCEMENT: warning
+          TRUTH_COMPILER_TENANT: iris
+          TRUTH_COMPILER_ENFORCEMENT: error

@@ -2,11 +2,13 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 import { assess } from "./assess.ts";
-import { loadContracts } from "./contracts.ts";
+import { compileRegistry } from "./compile.ts";
 import { parseUnifiedDiff } from "./diff.ts";
 import { runAssessment } from "./cli.ts";
-import { pathMatches, repoMatches } from "./retrieve.ts";
+import { loadRegistry } from "./registry.ts";
+import { repoMatches } from "./glob.ts";
 import { renderMarkdown } from "./report.ts";
+import { createFsWorkspace } from "./workspace.ts";
 
 function toolResult(value: unknown) {
   return {
@@ -14,29 +16,32 @@ function toolResult(value: unknown) {
   };
 }
 
-export function createRegressionMemoryServer(): McpServer {
+export function createTruthCompilerServer(): McpServer {
   const server = new McpServer({
-    name: "iris-regression-memory",
-    version: "0.3.0",
+    name: "truth-compiler",
+    version: "1.0.0",
   });
 
   server.registerTool(
     "assess_diff",
     {
       title: "Assess a unified diff",
-      description: "Assess a unified diff against approved behavioral contracts. Read-only and deterministic.",
+      description: "Assess a unified diff against live truths. Deterministic. LLM is not the merge gate.",
       inputSchema: z.object({
         repository: z.string().min(3),
         unifiedDiff: z.string().min(1),
+        tenant: z.string().min(2).optional(),
+        workspace: z.string().optional(),
       }),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     },
-    async ({ repository, unifiedDiff }) => {
+    async ({ repository, unifiedDiff, tenant, workspace }) => {
       const assessment = assess({
         repo: repository,
         diff: parseUnifiedDiff(unifiedDiff),
         source: "mcp:unified-diff",
-        contracts: loadContracts(),
+        registry: loadRegistry(tenant ?? "iris"),
+        workspace: workspace ? createFsWorkspace(workspace) : undefined,
       });
       return toolResult({ assessment, markdown: renderMarkdown(assessment) });
     },
@@ -46,66 +51,89 @@ export function createRegressionMemoryServer(): McpServer {
     "assess_pull_request",
     {
       title: "Assess a GitHub pull request",
-      description: "Fetch and assess a GitHub pull request using GITHUB_TOKEN or an authenticated gh CLI. Read-only.",
+      description: "Fetch and assess a GitHub pull request using GITHUB_TOKEN or an authenticated gh CLI.",
       inputSchema: z.object({
         repository: z.string().min(3),
         pullRequest: z.number().int().positive(),
         sourceRepository: z.string().min(3).optional(),
+        tenant: z.string().min(2).optional(),
+        workspace: z.string().optional(),
       }),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
-    async ({ repository, pullRequest, sourceRepository }) => {
+    async ({ repository, pullRequest, sourceRepository, tenant, workspace }) => {
       const assessment = await runAssessment({
+        tenant: tenant ?? "iris",
         repo: repository,
         sourceRepo: sourceRepository,
         pr: pullRequest,
+        workspace,
       });
       return toolResult({ assessment, markdown: renderMarkdown(assessment) });
     },
   );
 
   server.registerTool(
-    "list_contracts",
+    "list_truths",
     {
-      title: "List behavioral contracts",
-      description: "List sanitized behavioral contracts, optionally filtered by repository and path.",
+      title: "List truths",
+      description: "List truths for a tenant, optionally filtered by repository.",
       inputSchema: z.object({
+        tenant: z.string().min(2).optional(),
         repository: z.string().optional(),
-        path: z.string().optional(),
       }),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     },
-    async ({ repository, path }) => {
-      const contracts = loadContracts().filter((contract) =>
-        (!repository || repoMatches(contract, repository)) &&
-        (!path || pathMatches(contract, path)),
+    async ({ tenant, repository }) => {
+      const registry = loadRegistry(tenant ?? "iris");
+      const truths = registry.truths.filter((truth) =>
+        !repository || repoMatches(truth.applies_to.repositories, repository),
       );
-      return toolResult(contracts);
+      return toolResult({ tenant: registry.tenant, truths });
     },
   );
 
   server.registerTool(
-    "get_contract",
+    "get_truth",
     {
-      title: "Get a behavioral contract",
-      description: "Return one sanitized behavioral contract by ID.",
-      inputSchema: z.object({ id: z.string().regex(/^IRIS-BEH-[0-9]{4}$/) }),
+      title: "Get a truth",
+      description: "Return one truth by ID.",
+      inputSchema: z.object({
+        id: z.string().regex(/^[A-Z][A-Z0-9]+-TRUTH-[0-9]{4}$/),
+        tenant: z.string().min(2).optional(),
+      }),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     },
-    async ({ id }) => {
-      const contract = loadContracts().find((item) => item.id === id);
-      return contract
-        ? toolResult(contract)
-        : { content: [{ type: "text" as const, text: `Contract ${id} was not found.` }], isError: true };
+    async ({ id, tenant }) => {
+      const truth = loadRegistry(tenant ?? "iris").truths.find((item) => item.id === id);
+      return truth
+        ? toolResult(truth)
+        : { content: [{ type: "text" as const, text: `Truth ${id} was not found.` }], isError: true };
+    },
+  );
+
+  server.registerTool(
+    "compile_emitters",
+    {
+      title: "Compile Semgrep and CodeRabbit emitters",
+      description: "Return generated Semgrep rules and CodeRabbit path instructions for a tenant. Does not write files.",
+      inputSchema: z.object({ tenant: z.string().min(2).optional() }),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ tenant }) => {
+      return toolResult(compileRegistry(loadRegistry(tenant ?? "iris")));
     },
   );
 
   return server;
 }
 
+/** @deprecated Use createTruthCompilerServer */
+export const createRegressionMemoryServer = createTruthCompilerServer;
+
 const invoked = process.argv[1]?.includes("mcp.ts") ||
   process.argv[1]?.endsWith("/mcp.mjs") ||
   process.argv[1]?.endsWith("/mcp.cjs");
 if (invoked) {
-  void serveStdio(createRegressionMemoryServer);
+  void serveStdio(createTruthCompilerServer);
 }

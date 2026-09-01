@@ -1,0 +1,43 @@
+id: IRIS-TRUTH-0008
+tenant: iris
+title: Normal integration enumeration excludes deleted rows
+statement: >
+  Queries that enumerate int_integration for normal agent or admin flows must
+  mention int_deleted so soft-deleted rows are not treated as live.
+status: live
+executor:
+  kind: contract
+  blocking: true
+  emit: semgrep
+  languages:
+    - typescript
+    - javascript
+    - java
+  query_anchor: int_integration
+  query_required: int_deleted
+  mode: both
+applies_to:
+  repositories:
+    - ignitetech-group/iris-api
+  paths:
+    - src/repositories/**/*.ts
+    - src/services/**/*.ts
+  coupling:
+    - care-shared-schema
+  excluded_paths:
+    - "**/*.test.ts"
+    - "**/__tests__/**"
+evidence:
+  - type: jira
+    key: IRISNG-3453
+    url: https://ignitetechpm.atlassian.net/browse/IRISNG-3453
+failure_mechanism: >
+  Legacy enumeration included int_deleted=1 rows and surfaced deleted
+  integrations as live.
+required_guards:
+  - Filter int_deleted on normal enumeration
+governance:
+  owner: care-compatibility-maintainers
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

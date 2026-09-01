@@ -1,0 +1,37 @@
+id: IRIS-TRUTH-0002
+tenant: iris
+title: Calendar page still wires Generate Campaign
+statement: >
+  PublisherCalendarPage must import GenerateCampaignPanel and pass
+  onGenerateCampaign into the header so the control is not a dead label.
+status: live
+executor:
+  kind: product
+  blocking: true
+  emit: none
+  files:
+    - src/features/publishing/calendar/PublisherCalendarPage.tsx
+  must_contain:
+    - GenerateCampaignPanel
+    - onGenerateCampaign
+applies_to:
+  repositories:
+    - ignitetech-group/iris-web
+  paths:
+    - src/features/publishing/calendar/**
+  always_on: true
+  scan_workspace: true
+  coupling:
+    - publisher-calendar-header
+evidence:
+  - type: slack
+    note: Header button without a handler looked present and did nothing
+failure_mechanism: >
+  The header still rendered text after the page stopped wiring the panel.
+required_guards:
+  - Keep GenerateCampaignPanel imported and wired from PublisherCalendarPage
+governance:
+  owner: publisher-maintainers
+  approved_at: 2026-09-01
+  review_after: 2027-03-01
+  version: 1

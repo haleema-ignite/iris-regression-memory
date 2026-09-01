@@ -1,0 +1,8 @@
+reviews:
+  path_instructions:
+    - path: src/features/publishing/calendar/**
+      instructions: >
+        IRIS-TRUTH-0018: PublisherCalendarHeader is a shared shell. A calendar,
+        filter, search, or assets change must keep Generate Campaign visible and
+        wired. Do not accept a layout-only AC as coverage for sibling actions on
+        this header.
