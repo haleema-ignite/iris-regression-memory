@@ -4,6 +4,7 @@ import { assess } from "./assess.ts";
 import { writeCompileResult } from "./compile.ts";
 import { filesToUnifiedDiff, parseUnifiedDiff } from "./diff.ts";
 import { fetchPullRequest, fetchPullRequestFiles } from "./github.ts";
+import { localCheckoutDiff } from "./local-git.ts";
 import { loadRegistry } from "./registry.ts";
 import { renderMarkdown } from "./report.ts";
 import type { EnforcementMode } from "./report.ts";
@@ -21,6 +22,9 @@ export interface CliOptions {
   pr?: number;
   diffFile?: string;
   workspace?: string;
+  base?: string;
+  head?: string;
+  noDiff?: boolean;
   format?: OutputFormat;
   enforcement?: EnforcementMode;
   outDir?: string;
@@ -53,6 +57,14 @@ export function parseArgs(argv: string[]): CliOptions {
     } else if (arg === "--workspace" && next) {
       options.workspace = next;
       i += 1;
+    } else if (arg === "--base" && next) {
+      options.base = next;
+      i += 1;
+    } else if (arg === "--head" && next) {
+      options.head = next;
+      i += 1;
+    } else if (arg === "--no-diff") {
+      options.noDiff = true;
     } else if (arg === "--json") {
       options.format = "json";
     } else if (arg === "--sarif") {
@@ -81,18 +93,24 @@ export function parseArgs(argv: string[]): CliOptions {
 
 function printHelp(): void {
   process.stdout.write(`Usage:
-  npx truth-compiler assess --tenant iris --repo owner/name --pr 413
+  npx truth-compiler assess --tenant iris --repo owner/name --workspace ../iris-web
   npx truth-compiler assess --tenant iris --repo owner/name --diff-file change.diff --workspace ../iris-web
+  npx truth-compiler assess --tenant iris --repo owner/name --pr 413 --workspace ../iris-web
   npx truth-compiler compile --tenant iris --out tenants/iris/emitters
   npx truth-compiler list --tenant iris
+
+The team trial is local. Pass --workspace so product, leftover-decision, and require_present facts run. GitHub --pr is optional.
 
 Options:
   --tenant NAME       Tenant id (default: iris)
   --repo owner/name   GitHub repository (required for assess)
   --source-repo NAME  Repository from which to fetch the PR diff
-  --pr N              Pull request number
-  --diff-file PATH    Local unified diff instead of GitHub
+  --pr N              Pull request number (needs a token; not required for local trial)
+  --diff-file PATH    Local unified diff instead of git or GitHub
   --workspace DIR     Checkout to prove product, decision, and workspace facts
+  --base REF          Diff base (default: main/master). With --workspace and no --diff-file, diffs the working tree against this ref
+  --head REF          Diff head (default: working tree). Three-dot base...head when set to a commit
+  --no-diff           Assess the checkout only (always-on product and leftover facts). Ignores git diff
   --format FORMAT     markdown (default), json, or sarif
   --enforcement MODE  warning (exit 0) or error (exit 1 on a failed blocking truth)
   --out DIR           Compile emitters to this directory
@@ -103,12 +121,26 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
   if (!options.repo) {
     throw new Error("--repo owner/name is required");
   }
-  if (!options.pr && !options.diffFile) {
-    throw new Error("Provide --pr or --diff-file");
+  if (!options.pr && !options.diffFile && !options.workspace) {
+    throw new Error("Provide --workspace (local trial), --diff-file, or --pr");
   }
 
   const registry = loadRegistry(options.tenant ?? "iris");
-  const workspace = options.workspace ? createFsWorkspace(resolve(options.workspace)) : undefined;
+  const workspaceRoot = options.workspace ? resolve(options.workspace) : undefined;
+  const workspace = workspaceRoot ? createFsWorkspace(workspaceRoot) : undefined;
+
+  if (options.noDiff) {
+    if (!workspaceRoot) {
+      throw new Error("--no-diff requires --workspace");
+    }
+    return assess({
+      repo: options.repo,
+      diff: parseUnifiedDiff(""),
+      source: `checkout:${workspaceRoot}`,
+      registry,
+      workspace,
+    });
+  }
 
   if (options.diffFile) {
     const raw = readFileSync(options.diffFile, "utf8");
@@ -121,16 +153,27 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
     });
   }
 
-  const sourceRepo = options.sourceRepo ?? options.repo;
-  const meta = await fetchPullRequest(sourceRepo, options.pr!);
-  const files = await fetchPullRequestFiles(sourceRepo, options.pr!);
-  const raw = filesToUnifiedDiff(files);
+  if (options.pr) {
+    const sourceRepo = options.sourceRepo ?? options.repo;
+    const meta = await fetchPullRequest(sourceRepo, options.pr);
+    const files = await fetchPullRequestFiles(sourceRepo, options.pr);
+    const raw = filesToUnifiedDiff(files);
+    return assess({
+      repo: options.repo,
+      diff: parseUnifiedDiff(raw),
+      sha: meta.headSha,
+      pr: meta.number,
+      source: `${sourceRepo}#${meta.number}@${meta.headSha.slice(0, 7)}`,
+      registry,
+      workspace,
+    });
+  }
+
+  const raw = localCheckoutDiff(workspaceRoot!, options.base, options.head);
   return assess({
     repo: options.repo,
     diff: parseUnifiedDiff(raw),
-    sha: meta.headSha,
-    pr: meta.number,
-    source: `${sourceRepo}#${meta.number}@${meta.headSha.slice(0, 7)}`,
+    source: `local:${workspaceRoot}`,
     registry,
     workspace,
   });

@@ -188,6 +188,28 @@ describe("contract and decision truths", () => {
     ));
   });
 
+  it("proves leftover and product facts from a checkout with no diff", () => {
+    const leftover = assess({
+      repo: apiRepo,
+      diff: parseUnifiedDiff(""),
+      source: "workspace-only",
+      registry,
+      workspace: workspace("fixtures/workspaces/iris-api-leftover"),
+    });
+    assert.equal(leftover.verdict, "fail");
+    assert.ok(leftover.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0009" && finding.verdict === "fail"));
+
+    const product = assess({
+      repo: webRepo,
+      diff: parseUnifiedDiff(""),
+      source: "workspace-only",
+      registry,
+      workspace: workspace("fixtures/workspaces/iris-web-ok"),
+    });
+    assert.ok(product.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0001" && finding.verdict === "pass"));
+    assert.ok(product.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0003" && finding.verdict === "pass"));
+  });
+
   it("fails hidden-board fail-open", () => {
     const result = assessFixture("fixtures/diffs/hidden-board-fail-open.diff", enginesRepo);
     assert.equal(result.verdict, "fail");

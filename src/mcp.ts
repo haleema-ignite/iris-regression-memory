@@ -48,6 +48,34 @@ export function createTruthCompilerServer(): McpServer {
   );
 
   server.registerTool(
+    "assess_checkout",
+    {
+      title: "Assess a local git checkout",
+      description: "Assess the working tree of a local IRIS service against live truths. Does not call GitHub. LLM is not the merge gate.",
+      inputSchema: z.object({
+        repository: z.string().min(3),
+        workspace: z.string().min(1),
+        tenant: z.string().min(2).optional(),
+        base: z.string().optional(),
+        head: z.string().optional(),
+        noDiff: z.boolean().optional(),
+      }),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ repository, workspace, tenant, base, head, noDiff }) => {
+      const assessment = await runAssessment({
+        tenant: tenant ?? "iris",
+        repo: repository,
+        workspace,
+        base,
+        head,
+        noDiff,
+      });
+      return toolResult({ assessment, markdown: renderMarkdown(assessment) });
+    },
+  );
+
+  server.registerTool(
     "assess_pull_request",
     {
       title: "Assess a GitHub pull request",

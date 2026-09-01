@@ -15,6 +15,7 @@ npm test
 npm run typecheck
 npm run compile
 npm run build
+npm run trial:local -- --iris-root /absolute/path/to/IRIS
 ```
 
 A pass means the encoded facts behave. It does not mean every IRIS regression is covered. Visible `gap` truths are the unfinished list.

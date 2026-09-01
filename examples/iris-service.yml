@@ -1,5 +1,6 @@
-# Drop this into an IRIS service repository (iris-web, iris-api, iris-sp-engines, iris-e2e).
-# The Action checks out this service (GITHUB_WORKSPACE) and loads truths from the compiler repo.
+# Optional GitHub Action for a later warning-mode service install.
+# The team trial is local: npm run trial:local -- --iris-root /path/to/IRIS
+# Do not add this file to ignitetech-group IRIS repositories for the current trial.
 
 name: Truth Compiler
 

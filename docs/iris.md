@@ -21,6 +21,15 @@ IRIS is the first tenant, not a hardcoded product. Truths live in `tenants/iris/
 | 0018 | Calendar header path instruction | CodeRabbit emit | shared shell |
 | 0019 | No `LIKE '%…%'` | Semgrep | pod5 |
 
-## Wire-up
+## Local trial
 
-Add `examples/iris-service.yml` to each IRIS service. Product truths require the service checkout; do not run this Action as a privileged `pull_request_target` that only fetches a diff.
+The team trial is local. From this compiler repo:
+
+```bash
+npm ci
+npm run trial:local -- --iris-root /absolute/path/to/IRIS
+```
+
+That assesses `iris-web`, `iris-api`, `iris-sp-engines`, and `iris-e2e` checkouts with the full live registry. Product and leftover facts need those working trees. Current HEAD is expected to fail `IRIS-TRUTH-0003` (web) and `IRIS-TRUTH-0009` (API) until those facts are true.
+
+Do not add `examples/iris-service.yml` to IRIS org repositories for this trial.
