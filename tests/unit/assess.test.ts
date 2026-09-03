@@ -258,44 +258,45 @@ describe("contract and decision truths", () => {
     ));
   });
 
-  it("adjudicates community board visibility against the real guard tokens", () => {
-    // 0012 is live and names the tokens the IRISNG-3231 fix actually uses:
-    // resolveBoardVisibility, cfg.includeHidden and the 'unknown-board' drop.
-    // All three are present on origin/main and origin/develop.
-    const guarded = [
-      "const board = boardsMap.get(boardId);",
+  it("accepts board-visibility guards split across the files they really live in", () => {
+    // The guards span two decision sites on canonical code: the drop rule is in
+    // filtering.ts and the by-id resolver is in polling.component.ts. The
+    // earlier version of this test put all three tokens in ONE synthetic file,
+    // so it passed while 0012 failed both origin/main and origin/develop. The
+    // fixture now mirrors the real split.
+    const holds = assessFixture(
+      "fixtures/diffs/community-no-board-filter.diff",
+      enginesRepo,
+      "fixtures/workspaces/community-canonical",
+    );
+    assert.equal(
+      holds.findings.find((item) => item.truthId === "IRIS-TRUTH-0012")?.verdict,
+      "pass",
+      JSON.stringify(holds.findings, null, 2),
+    );
+  });
+
+  it("still fails a checkout that is missing one of the guard groups", () => {
+    // Only the filtering guards present; the resolver group is absent.
+    const filteringOnly = [
       "if (!boardsMap.has(boardId)) return { keep: false, reason: 'unknown-board' };",
       "if (board?.hidden === true && !cfg.includeHidden) return { keep: false, reason: 'hidden' };",
-      "await rt.client.resolveBoardVisibility(id);",
     ].join("\n");
-    const holds = assess({
+    const result = assess({
       repo: enginesRepo,
       diff: parseUnifiedDiff(readRel("fixtures/diffs/community-no-board-filter.diff")),
-      source: "community-guarded",
+      source: "resolver-missing",
       registry,
       workspace: {
         root: "/memory",
         read: (path: string) =>
-          path === "engines/community/src/polling/filtering.ts" ? guarded : undefined,
+          path === "engines/community/src/polling/filtering.ts" ? filteringOnly : undefined,
         list: () => ["engines/community/src/polling/filtering.ts"],
       },
     });
-    assert.equal(holds.findings.find((item) => item.truthId === "IRIS-TRUTH-0012")?.verdict, "pass");
-
-    // A checkout that predates the fix fails it.
-    const missing = assess({
-      repo: enginesRepo,
-      diff: parseUnifiedDiff(readRel("fixtures/diffs/community-no-board-filter.diff")),
-      source: "community-unguarded",
-      registry,
-      workspace: {
-        root: "/memory",
-        read: (path: string) =>
-          path === "engines/community/src/polling/filtering.ts" ? "export const poll = 1;" : undefined,
-        list: () => ["engines/community/src/polling/filtering.ts"],
-      },
-    });
-    assert.equal(missing.findings.find((item) => item.truthId === "IRIS-TRUTH-0012")?.verdict, "fail");
+    const finding = result.findings.find((item) => item.truthId === "IRIS-TRUTH-0012");
+    assert.equal(finding?.verdict, "fail");
+    assert.match(finding?.evidence.detail ?? "", /resolveBoardVisibility/);
   });
 
   it("proves leftover and product facts from a checkout with no diff", () => {

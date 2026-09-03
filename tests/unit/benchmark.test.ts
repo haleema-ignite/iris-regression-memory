@@ -12,6 +12,7 @@ interface BenchmarkCase {
   head: string;
   expectedVerdict: "pass" | "fail" | "inconclusive";
   mustFailTruths?: string[];
+  alsoAllowedToFail?: string[];
   mustPassTruths?: string[];
   mustNotFailTruths?: string[];
   legacyContract?: string;
@@ -74,12 +75,43 @@ describe("historical benchmark manifest", () => {
       const named = (item.mustFailTruths?.length ?? 0) + (item.mustPassTruths?.length ?? 0);
       assert.ok(named > 0, `${item.id} names no per-truth expectation`);
     }
-    // The 860/921 fix cases are the shape that forced this change.
+    // The 860/921 fix cases are the shape that forced this change: their own
+    // contract must PASS while the overall verdict fails on other truths.
     for (const id of ["fix-tiktok-legacy-860", "fix-listener-legacy-921"]) {
       const item = manifest.cases.find((entry) => entry.id === id);
-      assert.deepEqual(item?.mustFailTruths, ["IRIS-TRUTH-0009"]);
       assert.deepEqual(item?.mustPassTruths, ["IRIS-TRUTH-0005"]);
+      assert.ok(item?.mustFailTruths?.includes("IRIS-TRUTH-0009"));
     }
+  });
+
+  it("accounts for every truth allowed to fail, so extra failures are violations", () => {
+    // "Zero false positives" was only true per case: on an expected-fail case an
+    // extra wrong truth failure changed nothing, and most cases constrained
+    // nothing at all. Every failure now has to be named somewhere.
+    for (const item of manifest.cases) {
+      const accounted = [
+        ...(item.mustFailTruths ?? []),
+        ...(item.alsoAllowedToFail ?? []),
+      ];
+      for (const id of accounted) {
+        assert.match(id, /^IRIS-TRUTH-[0-9]{4}$/, `${item.id} names a malformed truth id`);
+      }
+    }
+    // Only the standing ratchets may be waved through without being required.
+    const allowed = new Set(["IRIS-TRUTH-0003", "IRIS-TRUTH-0009"]);
+    for (const item of manifest.cases) {
+      for (const id of item.alsoAllowedToFail ?? []) {
+        assert.ok(
+          allowed.has(id),
+          `${item.id} allows ${id} to fail without requiring it; only standing ratchets may be`,
+        );
+      }
+    }
+  });
+
+  it("says out loud that it is a tuned regression suite", () => {
+    assert.match(manifest.expectationsNote ?? "", /TUNED REGRESSION SUITE/);
+    assert.match(manifest.expectationsNote ?? "", /casesMeetingNamedExpectations/);
   });
 
   it("covers the real Generate Campaign removal and its revert", () => {

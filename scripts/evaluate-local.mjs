@@ -36,6 +36,25 @@ function scoreExpectations(item, findings) {
     const finding = byId.get(id);
     if (finding && finding.verdict === "fail") problems.push(`${id} failed but must not`);
   }
+
+  // Exhaustive, not just the named truths.
+  //
+  // "Zero false positives" was only true at the whole-case level: on an
+  // expected-fail case, an extra wrong truth failure changed nothing, and 23
+  // cases had an empty mustNotFailTruths so nothing constrained them at all.
+  // Every failure now has to be accounted for by name.
+  const allowed = new Set([
+    ...(item.mustFailTruths ?? []),
+    ...(item.alsoAllowedToFail ?? []),
+  ]);
+  for (const finding of findings) {
+    if (finding.verdict !== "fail") continue;
+    if (allowed.has(finding.truthId)) continue;
+    problems.push(
+      `${finding.truthId} failed and is not accounted for ` +
+      `(${finding.evidence?.detail ?? "no detail"})`,
+    );
+  }
   return problems;
 }
 
@@ -121,8 +140,9 @@ function summarize(cases) {
   summary.recall = summary.expectedFail === 0
     ? null
     : summary.detectedFail / summary.expectedFail;
-  // The number to quote: every named truth did what the case says it must.
-  summary.perTruthAccuracy = cases.length === 0
+  // Per case, not per evaluated truth: a case counts only when every named
+  // expectation held AND no unaccounted-for truth failed.
+  summary.casesMeetingNamedExpectations = cases.length === 0
     ? null
     : summary.expectationsMet / cases.length;
   summary.precision = summary.detectedFail + summary.falsePositives === 0

@@ -6,7 +6,7 @@ import {
   findSignalGroup,
   findSignalInAdded,
   lineViewOf,
-  missingRequiredSignals,
+  missingRequiredGroups,
   pass,
   relevantDiffFiles,
   workspaceBodies,
@@ -76,7 +76,10 @@ export function runPattern(ctx: ExecutorContext): ExecutorResult {
         : bodies.filter((file) =>
           files.some((diffFile) => diffFile.path === file.path && diffFile.status === "added"),
         );
-      const missing = missingRequiredSignals(provingBodies, truth.executor.required_signals ?? []);
+      // Groups when given, otherwise the flat list as a single group.
+      const groups = truth.executor.required_signal_groups
+        ?? (truth.executor.required_signals ? [truth.executor.required_signals] : []);
+      const missing = missingRequiredGroups(provingBodies, groups);
       if (missing) {
         return fail(`${truth.id} is missing a required guard in scoped files.`, missing);
       }

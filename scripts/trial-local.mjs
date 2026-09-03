@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -67,6 +68,53 @@ function npmRun(script) {
   return result;
 }
 
+function git(cwd, args, encoding = "utf8") {
+  return spawnSync("git", ["-C", cwd, ...args], { encoding, maxBuffer: 400 * 1024 * 1024 });
+}
+
+/** The commit a checkout is on, and how much uncommitted work sits on top. */
+function provenance(checkout) {
+  const sha = git(checkout, ["rev-parse", "HEAD"]);
+  const branch = git(checkout, ["rev-parse", "--abbrev-ref", "HEAD"]);
+  const modified = git(checkout, ["status", "--porcelain", "--untracked-files=no"]);
+  const untracked = git(checkout, ["ls-files", "--others", "--exclude-standard"]);
+  const count = (result) => result.status === 0
+    ? result.stdout.split("\n").filter((line) => line.trim().length > 0).length
+    : 0;
+  return {
+    sha: sha.status === 0 ? sha.stdout.trim() : undefined,
+    branch: branch.status === 0 ? branch.stdout.trim() : undefined,
+    modified: count(modified),
+    untracked: count(untracked),
+  };
+}
+
+/**
+ * Materialize a commit so the HEAD audit really is an audit of that commit.
+ *
+ * Assessing the filesystem and calling the result "HEAD" was wrong: the four
+ * local checkouts carry 62, 82, 84 and 8 uncommitted entries, so those results
+ * described nobody's commit.
+ */
+function materializeHead(checkout, sha) {
+  const dir = mkdtempSync(join(tmpdir(), "truth-trial-head-"));
+  const archive = git(checkout, ["archive", sha], "buffer");
+  if (archive.status !== 0) {
+    rmSync(dir, { recursive: true, force: true });
+    return undefined;
+  }
+  const extracted = spawnSync("tar", ["-x", "-C", dir], {
+    input: archive.stdout,
+    encoding: "buffer",
+    maxBuffer: 400 * 1024 * 1024,
+  });
+  if (extracted.status !== 0) {
+    rmSync(dir, { recursive: true, force: true });
+    return undefined;
+  }
+  return dir;
+}
+
 function assessService(checkout, repo, extraArgs = []) {
   const result = run(process.execPath, [
     "--import",
@@ -113,6 +161,8 @@ function printAssess(label, repo, assessment) {
   process.stdout.write("\n");
 }
 
+const baseRef = argValue("--base");
+const baseArgs = baseRef ? ["--base", baseRef] : [];
 const skipCheck = hasFlag("--skip-check");
 const skipBenchmark = hasFlag("--skip-benchmark");
 const strict = hasFlag("--strict");
@@ -140,25 +190,56 @@ if (present.length === 0) {
 
 const headRows = [];
 const localRows = [];
-process.stdout.write("Checkout facts (no diff — product, leftover, always-on):\n");
+
+process.stdout.write("Committed HEAD audit — each service's actual commit, materialized:\n");
 for (const service of present) {
   const checkout = join(irisRoot, service.dir);
-  const assessment = assessService(checkout, service.repo, ["--no-diff"]);
-  const unexpected = unexpectedHeadFailures(service.repo, assessment);
-  headRows.push({ repo: service.repo, unexpected, failed: failedIds(assessment), selected: assessment.selected });
-  printAssess("HEAD", service.repo, assessment);
-  const expected = EXPECTED_HEAD_RATCHETS[service.repo];
-  if (expected) {
-    process.stdout.write(`  expected current-HEAD ratchet: ${expected.join(", ")}\n`);
+  const state = provenance(checkout);
+  if (!state.sha) {
+    process.stdout.write(`HEAD ${service.repo}: no commit resolved, skipped\n`);
+    continue;
+  }
+  const tree = materializeHead(checkout, state.sha);
+  if (!tree) {
+    process.stdout.write(`HEAD ${service.repo}: could not materialize ${state.sha.slice(0, 12)}, skipped\n`);
+    continue;
+  }
+  try {
+    const assessment = assessService(tree, service.repo, ["--no-diff"]);
+    const unexpected = unexpectedHeadFailures(service.repo, assessment);
+    headRows.push({
+      repo: service.repo,
+      sha: state.sha,
+      unexpected,
+      failed: failedIds(assessment),
+      selected: assessment.selected,
+    });
+    printAssess(`HEAD ${state.branch ?? "?"}@${state.sha.slice(0, 12)}`, service.repo, assessment);
+    const expected = EXPECTED_HEAD_RATCHETS[service.repo];
+    if (expected) {
+      process.stdout.write(`  expected ratchet at this commit: ${expected.join(", ")}\n`);
+    }
+  } finally {
+    rmSync(tree, { recursive: true, force: true });
   }
 }
 
-process.stdout.write("\nWorking tree vs main/master (your local branch and uncommitted work):\n");
+process.stdout.write("\nWORKTREE — the files on disk, including uncommitted and untracked work:\n");
 for (const service of present) {
   const checkout = join(irisRoot, service.dir);
-  const assessment = assessService(checkout, service.repo);
+  const state = provenance(checkout);
+  const assessment = assessService(checkout, service.repo, baseArgs);
   localRows.push({ repo: service.repo, failed: failedIds(assessment), selected: assessment.selected });
-  printAssess("DIFF", service.repo, assessment);
+  printAssess("WORKTREE", service.repo, assessment);
+  process.stdout.write(
+    `  ${state.branch ?? "?"} at ${(state.sha ?? "").slice(0, 12)}` +
+    `, ${state.modified} modified, ${state.untracked} untracked` +
+    `${state.modified + state.untracked > 0 ? " — NOT a named revision" : " — clean"}\n`,
+  );
+  process.stdout.write(`  base: ${assessment.revision.baseSha
+    ? assessment.revision.baseSha.slice(0, 12)
+    : "none resolved, so failures are reported as unattributed"}\n`);
+  process.stdout.write(`  source: ${assessment.source}\n`);
 }
 
 if (!skipBenchmark) {
@@ -176,9 +257,21 @@ if (!skipBenchmark) {
   );
 }
 
-process.stdout.write("\nVisible gaps stay in the registry: IRIS-TRUTH-0016 (LIQL), IRIS-TRUTH-0017 (Publisher AI).\n");
+const gaps = catalog.truths
+  .filter((truth) => truth.status === "gap")
+  .map((truth) => truth.id);
+const proposals = catalog.truths
+  .filter((truth) => truth.status === "proposed")
+  .map((truth) => truth.id);
+process.stdout.write(`\nVisible gaps stay in the registry: ${gaps.join(", ") || "none"}.\n`);
+process.stdout.write(`Proposals awaiting an owner: ${proposals.join(", ") || "none"}.\n`);
 process.stdout.write("This trial is local. It does not write to GitHub.\n");
-process.stdout.write("Full feature set: pattern, product, contract, decision, semgrep, coderabbit emit, compile, MCP assess_checkout, historical benchmark.\n");
+process.stdout.write(
+  "Exercised here: pattern, product, contract, decision and semgrep executors, " +
+  "emitter compile, and the historical benchmark. The MCP server is built but " +
+  "this runner does not make a protocol call, and the emitted Semgrep YAML is " +
+  "checked structurally rather than run through the Semgrep CLI.\n",
+);
 
 const surprise = headRows.filter((row) => row.unexpected.length > 0);
 const localFails = localRows.filter((row) => row.failed.length > 0);
@@ -189,5 +282,9 @@ if (surprise.length > 0) {
   process.stderr.write(`\n--strict: local working-tree failures:\n${JSON.stringify(localFails, null, 2)}\n`);
   process.exitCode = 1;
 } else {
-  process.stdout.write("\nLocal trial surface completed. DIFF findings are your branch; they are not a broken compiler.\n");
+  process.stdout.write(
+    "\nLocal trial surface completed. WORKTREE findings are your branch and your " +
+    "uncommitted work, not a broken compiler. The HEAD audit above is the one " +
+    "tied to a named commit.\n",
+  );
 }

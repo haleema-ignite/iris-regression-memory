@@ -4,14 +4,14 @@ import { assess } from "./assess.ts";
 import { writeCompileResult } from "./compile.ts";
 import { filesToUnifiedDiff, parseUnifiedDiff } from "./diff.ts";
 import { fetchPullRequest, fetchPullRequestFiles } from "./github.ts";
-import { detectDefaultBase, isGitCheckout, localCheckoutDiff } from "./local-git.ts";
+import { localCheckoutDiff, worktreeStatus } from "./local-git.ts";
 import { assertKnownRepository, loadRegistry } from "./registry.ts";
 import { renderMarkdown } from "./report.ts";
 import type { EnforcementMode } from "./report.ts";
 import { renderSarif } from "./sarif.ts";
 import type { Assessment } from "./types.ts";
 import { createFsWorkspace } from "./workspace.ts";
-import { checkoutDirty, checkoutSha, materializeBaseline } from "./baseline.ts";
+import { checkoutDirty, checkoutSha, materializeBaseline, resolveRef } from "./baseline.ts";
 
 export type OutputFormat = "markdown" | "json" | "sarif";
 
@@ -192,10 +192,14 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
     });
   }
 
-  // Which ref to materialize as the state before the change. In local mode the
-  // diff base is the obvious answer, so the trial gets attribution for free.
-  const attributionRef = options.baseRef
-    ?? (options.diffFile || options.pr ? undefined : options.base ?? defaultBaseOf(workspaceRoot));
+  // Which ref to materialize as the state before the change.
+  //
+  // In local mode the diff base is the obvious answer, so the trial gets
+  // attribution for free. In PR mode the base comes from GitHub metadata and is
+  // resolved below, once we have it.
+  // Only for the modes that cannot work it out for themselves. Local mode
+  // resolves its own merge base below, and PR mode gets the base from GitHub.
+  const attributionRef = options.diffFile ? options.baseRef : undefined;
 
   const baseline = options.baseWorkspace
     ? {
@@ -237,6 +241,13 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
       const files = await fetchPullRequestFiles(sourceRepo, options.pr);
       const raw = filesToUnifiedDiff(files);
       const matches = workspaceSha === meta.headSha;
+
+      // GitHub already told us the base commit, so there is no reason to make
+      // the caller supply it. Without this, every workspace failure on a pull
+      // request came back `unknown` — the tool had the base SHA in hand and
+      // still refused to attribute anything.
+      const prBaseline = baseline ?? materializeIfPresent(workspaceRoot, meta.baseSha);
+      try {
       if (!matches && !options.allowRevisionMismatch) {
         throw new Error(
           `--workspace ${workspaceRoot} is at ${workspaceSha ?? "an unknown revision"}, ` +
@@ -253,65 +264,103 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
           "--allow-revision-mismatch to proceed with the result labelled unverified.",
         );
       }
-      return assess({
-        repo: options.repo,
-        diff: parseUnifiedDiff(raw),
-        sha: meta.headSha,
-        pr: meta.number,
-        source: `${sourceRepo}#${meta.number}@${meta.headSha.slice(0, 7)}`,
-        registry,
-        workspace,
-        baseWorkspace: baseline?.workspace,
-        revision: {
-          verified: matches && dirty === false,
-          workspaceSha,
-          expectedSha: meta.headSha,
-          baseSha: baseline?.sha,
-          ...(matches && dirty === false
-            ? {}
-            : {
-              note: dirty
-                ? "the checkout has uncommitted changes"
-                : "the checkout is not at the pull request head",
-            }),
-        },
-      });
+        return assess({
+          repo: options.repo,
+          diff: parseUnifiedDiff(raw),
+          sha: meta.headSha,
+          pr: meta.number,
+          source: `${sourceRepo}#${meta.number}@${meta.headSha.slice(0, 7)}`,
+          registry,
+          workspace,
+          baseWorkspace: prBaseline?.workspace,
+          revision: {
+            verified: matches && dirty === false,
+            workspaceSha,
+            expectedSha: meta.headSha,
+            baseSha: prBaseline?.sha ?? meta.baseSha,
+            ...(matches && dirty === false
+              ? {}
+              : {
+                note: dirty
+                  ? "the checkout has uncommitted changes"
+                  : "the checkout is not at the pull request head",
+              }),
+            ...(prBaseline
+              ? {}
+              : {
+                baseNote: `the pull request base ${meta.baseSha.slice(0, 12)} is not in this ` +
+                  "checkout, so failures cannot be attributed; fetch it and re-run",
+              }),
+          },
+        });
+      } finally {
+        if (prBaseline !== baseline) prBaseline?.dispose();
+      }
     }
 
-    // Local trial: diff the working tree against its base. The diff and the
-    // checkout are the same thing here, so the revision is self-consistent by
-    // construction — a clean tree makes it a named revision too.
-    const raw = localCheckoutDiff(workspaceRoot, options.base, options.head);
-    return assess({
-      repo: options.repo,
-      diff: parseUnifiedDiff(raw),
-      source: `local:${workspaceRoot}`,
-      registry,
-      workspace,
-      baseWorkspace: baseline?.workspace,
-      revision: {
-        verified: true,
-        workspaceSha,
-        baseSha: baseline?.sha,
-        ...(dirty
-          ? { note: "working tree has uncommitted changes, which is expected for a local trial" }
-          : {}),
-      },
+    // Local trial: diff the working tree against its merge base. The diff and
+    // the checkout are the same thing here, so the revision is self-consistent
+    // by construction — but a dirty tree is not a named revision, and the
+    // report says so.
+    const local = localCheckoutDiff(workspaceRoot, {
+      base: options.base,
+      head: options.head,
+      includeUntracked: true,
     });
+    const status = worktreeStatus(workspaceRoot);
+    // Attribute against the merge base, which is the state this branch started
+    // from and the state the diff was taken from. Using the base *tip* instead
+    // would compare the change to a tree it was never derived from, so a truth
+    // someone else fixed on the base after the branch point would read as
+    // "introduced here".
+    const localBaseline = baseline
+      ?? (options.baseRef
+        ? materializeIfPresent(workspaceRoot, options.baseRef)
+        : materializeIfPresent(workspaceRoot, local.mergeBase));
+    try {
+      return assess({
+        repo: options.repo,
+        diff: parseUnifiedDiff(local.diff),
+        source: `worktree:${workspaceRoot} vs ${local.base.ref} (merge base ${local.mergeBase.slice(0, 12)})`,
+        registry,
+        workspace,
+        baseWorkspace: localBaseline?.workspace,
+        revision: {
+          // A clean tree at a commit is a revision. A dirty tree is not, and
+          // calling it one is how "HEAD" ends up labelling 84 uncommitted files.
+          verified: dirty === false,
+          workspaceSha,
+          baseSha: localBaseline?.sha ?? local.mergeBase,
+          ...(dirty
+            ? {
+              note: `working tree has ${status.modified} modified and ` +
+                `${status.untracked.length} untracked file(s), so it is not a named revision` +
+                (local.untrackedIncluded.length > 0
+                  ? `; ${local.untrackedIncluded.length} untracked file(s) were included in the diff`
+                  : ""),
+            }
+            : {}),
+        },
+      });
+    } finally {
+      if (localBaseline !== baseline) localBaseline?.dispose();
+    }
   } finally {
     baseline?.dispose();
   }
 }
 
 /**
- * The ref a local checkout should be diffed and attributed against, or
- * undefined when it cannot be determined. A missing base is not fatal: it only
- * means failures are reported as unattributed rather than blamed on this change.
+ * Materialize `ref` if the checkout actually has it, otherwise undefined.
+ *
+ * A pull request base, or a merge base from a shallow clone, may not be present
+ * locally. That is a reason to report attribution as unknown, not to fail the
+ * run.
  */
-function defaultBaseOf(root: string): string | undefined {
-  if (!isGitCheckout(root)) return undefined;
+function materializeIfPresent(root: string, ref: string) {
+  if (!resolveRef(root, ref)) return undefined;
   try {
-    return detectDefaultBase(root);
+    return materializeBaseline(root, ref);
   } catch {
     return undefined;
   }

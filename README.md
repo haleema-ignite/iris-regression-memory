@@ -112,11 +112,19 @@ change *introduced* exit nonzero; a pre-existing ratchet is always neutral.
 
 | Outcome | Meaning |
 | --- | --- |
-| `fact_failed` | A truth failed on lines this change added, or in a file it touched. The author's to fix. |
-| `preexisting_fact_failed` | A truth failed against the checkout as it already stood. Needs an owner and a ticket, not a fix in this branch. |
+| `fact_failed` | The truth held at base and fails at head, or the evidence is a line this change added. The author's to fix. |
+| `preexisting_fact_failed` | The truth fails at base too. Needs an owner and a ticket, not a fix in this branch. |
+| `unattributed_fact_failed` | The truth fails, but no base state was available, so nobody can say who caused it. Re-run with a base. |
+| `advisory_fact_failed` | Only non-blocking truths failed. Informational. |
+| `not_evaluated` | A truth could not be run. A configuration problem, not a regression. |
 | `selected_truths_hold` | The selected truths were checked and hold. Not a statement about uncovered files. |
 | `only_delegated` | Truths were selected but all were handed to CodeRabbit. Nothing was verified. |
 | `no_selected_truth` | No live truth applied. Not a safety assertion. |
+
+Attribution needs a base state. Local mode supplies it from the merge base
+automatically, and PR mode from GitHub's base SHA; otherwise pass `--base-ref`.
+Without one, a workspace failure is `unknown` and never gating — the tool will
+not guess who caused it.
 
 A delegated CodeRabbit hand-off is reported as `delegated`, never as a pass:
 counting a hand-off as a verified fact is the invented pass this design exists to

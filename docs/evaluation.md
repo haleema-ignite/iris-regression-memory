@@ -1,16 +1,28 @@
 # Evaluation
 
 ```bash
-npm test
-npm run typecheck
-npm run compile
-npm run build
-# or all four:
-npm run check
+npm run check          # tests, typecheck, compile, build
 
 # the local trial across every IRIS checkout
 npm run trial:local -- --iris-root /absolute/path/to/IRIS
+
+# do the registry's current-state claims still match canonical branches?
+npm run probe:canonical -- --iris-root /absolute/path/to/IRIS
+
+# does the real Semgrep CLI accept, and agree with, the emitted rules?
+npm run verify:semgrep
 ```
+
+`probe:canonical` exists because prose claims about "the code" went wrong three
+times, all from reading dirty feature branches. It materializes named refs and
+compares the registry's claims against them. A unit test cannot catch that class
+of error, because the mistake is in the premise rather than the logic.
+
+`verify:semgrep` runs the emitted rules through the actual Semgrep CLI —
+`--validate` plus a match/no-match behavioural check. The unit tests only
+inspect the YAML structurally, which cannot tell you Semgrep will accept the
+config. It exits 0 with a notice when Semgrep is not installed, so the trial
+does not require a Python toolchain.
 
 ## What the unit tests cover
 
@@ -37,9 +49,22 @@ npm run evaluate:local -- --workspace /absolute/path/to/IRIS
 
 `summary.matched` — 34/34 — is the weakest useful claim, because it only says
 the whole-registry verdict matched. The number to quote is
-**`summary.expectationsMet`**, currently **34 of 34**: every truth the manifest
-names in `mustFailTruths`, `mustPassTruths` or `mustNotFailTruths` did what the
-case says it must.
+**`summary.casesMeetingNamedExpectations`**, currently **34 of 34**.
+
+Expectations are exhaustive: every truth that fails must appear in
+`mustFailTruths` or `alsoAllowedToFail`, and anything else counts as a
+violation. That matters, because "zero false positives" used to be true only at
+the whole-case level — on an expected-fail case an extra wrong truth failure
+changed nothing, and 23 cases constrained nothing at all. Turning the metric
+exhaustive immediately surfaced five real failures the old scoring had hidden:
+`IRIS-TRUTH-0019` genuinely fires on PR 574 (it adds
+`his_metadata LIKE '%"reason":"STOP_KEYWORD"%'`), and `IRIS-TRUTH-0006` genuinely
+fires on four iris-api trees where `intMetaOverride.apiParams = {` is present.
+Both are correct detections; both are now required.
+
+`alsoAllowedToFail` holds only the standing ratchets for a repository
+(`IRIS-TRUTH-0003` on web, `IRIS-TRUTH-0009` on api), and a test enforces that
+nothing else is waved through.
 
 The manifest is `schemaVersion: 2` for this reason. A single `contract` field
 could not express a fix case: PRs 860 and 921 are the *fix* for IRIS-BEH-0007,
@@ -74,6 +99,16 @@ are reported on every assessment.
 
 Delegated truths are counted separately from passes. A CodeRabbit hand-off
 verified nothing, so it is never a verified fact.
+
+## This is a regression suite, not a validation set
+
+Treat the 34 cases as a tuned regression suite. The truths were derived from
+these incident families, several signals were refined after the first replay,
+and two case labels were corrected after review. A suite you tuned against
+cannot measure your own accuracy — it can only stop you regressing.
+
+The only real validation is a prospective, read-only cohort of current pull
+requests, scored before any rule is adjusted. That has not been run.
 
 Detection signals for several truths were refined after the original replay, and
 the truths were derived from these incident families. That makes the benchmark

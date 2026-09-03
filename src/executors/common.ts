@@ -384,6 +384,28 @@ export function findLinePattern(
  * guard B in another satisfy a rule whose whole point is that both appear at the
  * same decision site.
  */
+/**
+ * Check each requirement group independently: every group must hold together
+ * inside some one scoped file, but different groups may live in different files.
+ *
+ * One flat list was wrong for any fact that spans two decision sites.
+ * IRIS-TRUTH-0012's resolver is in polling.component.ts and its filtering
+ * guards are in filtering.ts, so demanding all three from a single file failed
+ * canonical `origin/main` and `origin/develop`. The unit test missed it because
+ * the fixture put all three tokens in one synthetic file — the same
+ * fixture-shaped mistake this registry exists to avoid.
+ */
+export function missingRequiredGroups(
+  bodies: Array<{ path: string; body: string }>,
+  groups: string[][],
+): FindingEvidence | undefined {
+  for (const group of groups) {
+    const missing = missingRequiredSignals(bodies, group);
+    if (missing) return missing;
+  }
+  return undefined;
+}
+
 export function missingRequiredSignals(
   bodies: Array<{ path: string; body: string }>,
   signals: string[],

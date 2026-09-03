@@ -49,6 +49,15 @@ export interface ExecutorSpec {
   forbidden_signal_groups?: string[][];
   forbidden_line_patterns?: string[];
   required_signals?: string[];
+  /**
+   * Guards that must hold together *within one file*, one group at a time.
+   *
+   * `required_signals` is a single such group, which is wrong whenever a fact
+   * spans two decision sites: IRIS-TRUTH-0012's resolver lives in
+   * polling.component.ts while its filtering guards live in filtering.ts, so
+   * demanding all three from one file failed canonical code.
+   */
+  required_signal_groups?: string[][];
   leftover_tokens?: string[];
   /** Regex form of leftover_tokens, so rewording an error message does not
    *  silently convert a ratchet into a pass. */
@@ -368,4 +377,6 @@ export interface RevisionProvenance {
   expectedSha?: string;
   baseSha?: string;
   note?: string;
+  /** Why no base state was available, when that is the case. */
+  baseNote?: string;
 }

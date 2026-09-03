@@ -38,25 +38,48 @@ across 11 files in `iris-api`. The case is now `expected: pass`, and
 `IRIS-TRUTH-0019`'s positive detection is still validated on real history by
 `culprit-legacy-care-574` and by a unit test that adds a genuinely new wildcard.
 
-## Read attribution, not just recall
+## Read the exhaustive metric, not recall
 
-`summary.matched` is the weakest useful number. The evaluator also reports:
+`summary.matched` is the weakest useful number: it only says the whole-registry
+verdict matched. Quote **`summary.casesMeetingNamedExpectations`**, currently
+**34 of 34**.
 
-- `attributedRecall` — the share of expected-fail cases that failed on the truth
-  they were filed under, currently **10 of 12**.
-- `ratchetOnlyCases` — the cases that failed only because of an unrelated
-  standing ratchet: `fix-tiktok-legacy-860` and `fix-listener-legacy-921` fail on
-  `IRIS-TRUTH-0009`, not on the `IRIS-BEH-0007` contract they are filed under.
+Expectations are exhaustive. `mustFailTruths`, `mustPassTruths` and
+`mustNotFailTruths` name required outcomes, and any truth that fails without
+appearing in `mustFailTruths` or `alsoAllowedToFail` is a violation.
+`alsoAllowedToFail` holds only the standing ratchets for that repository
+(`IRIS-TRUTH-0003` on web, `IRIS-TRUTH-0009` on api).
 
-`recall` of 12/12 therefore overstates detection. Quote `attributedRecall`.
+That change mattered. "Zero false positives" had been true only per case — on an
+expected-fail case an extra wrong truth failure changed nothing, and 23 cases
+constrained nothing at all. Making it exhaustive surfaced five real detections
+the old scoring had hidden, and all five were correct:
+
+- `IRIS-TRUTH-0019` genuinely fires on PR 574, which adds
+  `his_metadata LIKE '%"reason":"STOP_KEYWORD"%'`.
+- `IRIS-TRUTH-0006` genuinely fires on four iris-api trees carrying
+  `intMetaOverride.apiParams = {`, the IRISNG-4090 nested-object shape. It is
+  absent from both canonical branches, so it is historical rather than live.
+
+Both are now required, so they cannot silently stop being detected.
+
+## This is a regression suite, not a validation set
+
+The truths were derived from these incident families, several signals were
+refined after the first replay, and two case labels were corrected after review.
+A suite you tuned against cannot measure your own accuracy — it can only stop
+you regressing. A prospective, read-only cohort of current pull requests, scored
+before any rule is adjusted, is the only real validation, and it has not been
+run.
 
 ## What the manifest does not cover
 
-Every case is `iris-api` or `iris-sp-engines`. There are **no `iris-web` or
-`iris-e2e` cases**, so `IRIS-TRUTH-0001`–`0004` — the Generate Campaign family,
-the incident that motivated the project — are never exercised here. Their
-coverage comes from unit tests and from running the CLI against an `iris-web`
-checkout.
+There are no `iris-e2e` cases, so `IRIS-TRUTH-0004` is exercised only by unit
+tests. `IRIS-TRUTH-0001` and `0002` are covered on real history by
+`culprit-generate-campaign-removed` (`040a6668`) and
+`fix-generate-campaign-restored` (`ae0c4061`) — added because the Generate
+Campaign family previously had no real-history coverage at all, which is exactly
+where a false negative was found.
 
 The 32-case manifest combines the original historical replay set with 12 validation PRs frozen before the engine-side watermark rule was added. Case `contract` ids may still use legacy `IRIS-BEH-*` labels; the compiler evaluates the migrated `IRIS-TRUTH-*` facts. Three validation additions remain untouched same-path engine controls. Three remain uncovered engine controls. The six frozen API validation PRs are now expected `pass` because 0009 is selected and holds.
 

@@ -85,8 +85,9 @@ document said it did; that reading came from a dirty local feature branch.
 ## Before enabling any automatic trigger
 
 1. **Shadow first.** Run the CLI by hand, or on a schedule, against recent merged
-   pull requests. Read every finding. The trial has never seen a live pull
-   request.
+   pull requests, read every finding, and score it before changing any rule.
+   The trial has never seen a live pull request. This is the step that would
+   turn the benchmark from a regression suite into evidence.
 2. **Resolve the open proposals.** `IRIS-TRUTH-0020` and `0021` need an owner's
    judgement. `0021` records a documentation-versus-code contradiction that would
    be encoded wrongly if guessed. See `docs/iris.md`.
@@ -95,8 +96,11 @@ document said it did; that reading came from a dirty local feature branch.
 4. **Re-verify every current-state claim against a named SHA.** Three truths were
    written from dirty local feature branches and two of them were wrong. Any
    statement about what the code does needs repository, branch, SHA and whether
-   the tree was clean.
-5. **Do not run as `pull_request_target`.** Product, decision and workspace-mode
+   the tree was clean. `npm run probe:canonical` now does this mechanically, and
+   must pass before any claim is repeated to the team.
+5. **Validate the emitters with the real Semgrep CLI.** `npm run verify:semgrep`.
+   A rule Semgrep rejects stops every other rule in that config from running.
+6. **Do not run as `pull_request_target`.** Product, decision and workspace-mode
    truths read the checkout. A privileged trigger that only fetches a diff cannot
    prove them, and the CLI now refuses to try.
 
@@ -109,8 +113,11 @@ A truth qualifies when all of these hold:
 
 - **Evidence.** It has caught a real regression on a live pull request, or on a
   historical replay where the manifest names it in `mustFailTruths` and it did
-  fail. `summary.expectationsMet` is the number that matters, not `recall`:
-  recall counts cases where *something* failed.
+  fail. `summary.casesMeetingNamedExpectations` is the number that matters, not
+  `recall`: recall counts cases where *something* failed. And the benchmark is a
+  suite the truths were tuned against, so it can only show absence of
+  regression — a prospective read-only cohort of live pull requests is the only
+  real evidence, and it has not been run.
 - **A stated proof scope.** An `added_lines` truth must carry `proves`, and the
   registry refuses to load without it. Its pass means "not reintroduced", never
   "the fact holds".

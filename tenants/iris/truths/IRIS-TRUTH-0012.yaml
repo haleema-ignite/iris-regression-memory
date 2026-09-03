@@ -33,10 +33,18 @@ executor:
   emit: none
   mode: workspace
   require_present: true
-  required_signals:
-    - resolveBoardVisibility
-    - cfg.includeHidden
-    - "'unknown-board'"
+  # Two groups, because the fact spans two decision sites and the guards are in
+  # two files on canonical code:
+  #
+  #   engines/community/src/polling/filtering.ts        — the drop rule
+  #   engines/community/src/polling/polling.component.ts — the by-id resolver
+  #
+  # A single flat list demanded all three from one file, which failed
+  # origin/main and origin/develop. Verified split across those two files on
+  # both branches.
+  required_signal_groups:
+    - [cfg.includeHidden, "'unknown-board'"]
+    - [resolveBoardVisibility]
 applies_to:
   repositories:
     - ignitetech-group/iris-sp-engines
@@ -72,4 +80,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-09-02
   review_after: 2027-03-01
-  version: 6
+  version: 7

@@ -101,8 +101,14 @@ export function validateExecutorShape(truth: Truth): void {
 
   // Checked before the "asserts nothing" rule below, so the more specific
   // message wins for this specific mistake.
-  if (executor.require_present && (executor.required_signals?.length ?? 0) === 0) {
-    throw new Error(`${where} sets require_present without required_signals.`);
+  if (
+    executor.require_present &&
+    (executor.required_signals?.length ?? 0) === 0 &&
+    (executor.required_signal_groups?.length ?? 0) === 0
+  ) {
+    throw new Error(
+      `${where} sets require_present without required_signals or required_signal_groups.`,
+    );
   }
 
   // A live pattern, contract or semgrep truth with nothing to assert loads
@@ -113,6 +119,7 @@ export function validateExecutorShape(truth: Truth): void {
       (executor.forbidden_signal_groups?.length ?? 0) +
       (executor.forbidden_line_patterns?.length ?? 0) +
       (executor.required_signals?.length ?? 0) +
+      (executor.required_signal_groups?.length ?? 0) +
       (executor.query_anchor ? 1 : 0);
     if (assertions === 0) {
       throw new Error(`${where} asserts nothing: it would pass on every change.`);

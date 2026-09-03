@@ -85,8 +85,10 @@ export function renderMarkdown(assessment: Assessment): string {
   );
   lines.push(
     `**Baseline:** ${assessment.baselineAvailable
-      ? "available, so failures are attributed by comparing base with head"
-      : "NOT available, so workspace failures cannot be attributed to this change"}`,
+      ? `available${assessment.revision.baseSha ? ` (base \`${assessment.revision.baseSha.slice(0, 12)}\`)` : ""}, ` +
+        "so failures are attributed by comparing base with head"
+      : `NOT available${assessment.revision.baseNote ? ` — ${assessment.revision.baseNote}` : ""}, ` +
+        "so workspace failures cannot be attributed to this change"}`,
   );
   lines.push("");
 

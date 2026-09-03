@@ -18,7 +18,9 @@
     "typecheck": "tsc --noEmit",
     "check": "npm test && npm run typecheck && npm run compile && npm run build",
     "evaluate:local": "node scripts/evaluate-local.mjs",
-    "trial:local": "node scripts/trial-local.mjs"
+    "trial:local": "node scripts/trial-local.mjs",
+    "probe:canonical": "node scripts/canonical-probe.mjs",
+    "verify:semgrep": "node scripts/verify-semgrep.mjs"
   },
   "license": "MIT",
   "files": [
