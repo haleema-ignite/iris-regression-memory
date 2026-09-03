@@ -6,6 +6,8 @@ statement: >
   Leading wildcards cannot use indexes. This is a reintroduction check on added
   lines, not a leftover ratchet for pre-existing queries in files the PR touched.
 status: live
+proves: >
+  that this change did not add a leading-wildcard LIKE. It is not a ratchet: the pre-existing occurrences in iris-api are deliberately not reported.
 executor:
   kind: semgrep
   blocking: true
@@ -15,9 +17,23 @@ executor:
     - javascript
     - java
   mode: added_lines
+  # Narrowed to the columns and tables the RCA is about.
+  #
+  # `LIKE\s+['"]%` alone matched every newly added leading-wildcard LIKE
+  # anywhere under src/**/*.ts, including small lookup tables where a wildcard
+  # scan is harmless. That over-reach is what makes a check feel arbitrary. The
+  # patterns below name the metadata columns and the high-volume Care tables
+  # from CARESMM-24342; a genuinely new hot-table wildcard on a column not
+  # listed here is a gap to widen deliberately, not a reason to match
+  # everything.
+  # The gap between the column and the LIKE is bounded on purpose. With `[^\n]*`
+  # the engine retried the whole remainder of the line from every column match,
+  # so a single long generated SQL line took over an hour: two benchmark cases
+  # went from ~2s to 4970s and 2259s. In real SQL the column and its predicate
+  # are close together.
   forbidden_line_patterns:
-    - "LIKE\\s+['\"]%"
-    - "int_meta LIKE '%"
+    - "\\b(?:int_meta|use_meta|his_metadata|doc_metadata|ckv_key|ckv_domain)\\b[^\\n]{0,200}?LIKE\\s+['\"]%"
+    - "\\bFROM\\s+(?:int_integration|doc_document|his_history)\\b[^\\n]{0,200}?LIKE\\s+['\"]%"
 applies_to:
   repositories:
     - ignitetech-group/iris-api
@@ -40,4 +56,4 @@ governance:
   owner: care-compatibility-maintainers
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 2
+  version: 3

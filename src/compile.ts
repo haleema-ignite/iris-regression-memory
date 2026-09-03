@@ -1,13 +1,14 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { stringify as stringifyYaml } from "yaml";
+import { isSemgrepEmittable } from "./registry.ts";
 import type { Registry, Truth } from "./types.ts";
 
-function patternTruths(registry: Registry): Truth[] {
+function semgrepTruths(registry: Registry): Truth[] {
   return registry.truths.filter((truth) =>
     truth.status === "live" &&
     (truth.executor.emit === "semgrep" || truth.executor.kind === "semgrep") &&
-    ((truth.executor.forbidden_line_patterns?.length ?? 0) > 0 || (truth.executor.forbidden_signals?.length ?? 0) > 0),
+    isSemgrepEmittable(truth),
   );
 }
 
@@ -19,40 +20,89 @@ function coderabbitTruths(registry: Registry): Truth[] {
   );
 }
 
+/**
+ * A truth whose internal executor only inspects added lines must not compile to
+ * a whole-file Semgrep rule.
+ *
+ * Semgrep `pattern-regex` matches the entire file, so emitting a reintroduction
+ * check as an ordinary rule reports every pre-existing occurrence in the
+ * repository — the opposite of what the truth says. iris-api currently holds 78
+ * pre-existing leading-wildcard LIKEs across 11 files; emitted as a plain rule,
+ * IRIS-TRUTH-0019 would raise all 78 as errors on the first run.
+ *
+ * These rules are therefore written to a separate file that is only correct
+ * under `semgrep --baseline-commit <base>`, and are labelled as such.
+ */
+function requiresDiffScan(truth: Truth): boolean {
+  return (truth.executor.mode ?? "both") === "added_lines";
+}
+
+function ruleFor(truth: Truth): Record<string, unknown> {
+  const regexes = [
+    ...(truth.executor.forbidden_line_patterns ?? []),
+    ...(truth.executor.forbidden_signals ?? []).map((signal) =>
+      signal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    ),
+  ];
+  return {
+    id: `truth-compiler.${truth.id}`,
+    message: `${truth.id}: ${truth.statement.trim()}`,
+    languages: truth.executor.languages ?? ["javascript", "typescript"],
+    severity: "ERROR",
+    metadata: {
+      truth_id: truth.id,
+      executor: truth.executor.kind,
+      source: "truth-compiler",
+      scope: requiresDiffScan(truth) ? "added_lines" : "workspace",
+      ...(requiresDiffScan(truth) ? { requires_diff_scan: true } : {}),
+    },
+    paths: {
+      include: truth.applies_to.paths ?? [],
+      exclude: truth.applies_to.excluded_paths ?? ["**/*.test.ts", "**/__tests__/**"],
+    },
+    "pattern-regex": regexes.length === 1 ? regexes[0] : `(${regexes.join("|")})`,
+  };
+}
+
+const DIFF_SCAN_HEADER = [
+  "# Truth Compiler — reintroduction rules. DIFF SCAN ONLY.",
+  "#",
+  "# Every rule here comes from a truth whose executor inspects added lines only.",
+  "# Semgrep pattern-regex matches whole files, so running these without a",
+  "# baseline reports pre-existing occurrences the truth deliberately does not",
+  "# claim. Run them as:",
+  "#",
+  "#   semgrep --config semgrep-diff-scan.yml --baseline-commit <merge-base>",
+  "#",
+  "# Do not merge this file into a repository-wide Semgrep config.",
+  "",
+].join("\n");
+
+const WORKSPACE_HEADER = [
+  "# Truth Compiler — whole-checkout rules.",
+  "#",
+  "# These come from truths that intentionally ratchet against the full",
+  "# checkout, so a plain repository-wide Semgrep run is correct for them.",
+  "",
+].join("\n");
+
 export interface CompileResult {
   tenant: string;
   semgrep: string;
+  semgrepDiffScan: string;
   coderabbit: string;
   manifest: string;
+  /** Live truths that asked for Semgrep emission but cannot produce a rule. */
+  unemittable: string[];
 }
 
 export function compileRegistry(registry: Registry): CompileResult {
-  const semgrepRules = patternTruths(registry).map((truth) => {
-    const regexes = [
-      ...(truth.executor.forbidden_line_patterns ?? []),
-      ...(truth.executor.forbidden_signals ?? []).map((signal) =>
-        signal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-      ),
-    ];
-    return {
-      id: `truth-compiler.${truth.id}`,
-      message: `${truth.id}: ${truth.statement.trim()}`,
-      languages: truth.executor.languages ?? ["javascript", "typescript"],
-      severity: "ERROR",
-      metadata: {
-        truth_id: truth.id,
-        executor: truth.executor.kind,
-        source: "truth-compiler",
-      },
-      paths: {
-        include: truth.applies_to.paths ?? [],
-        exclude: truth.applies_to.excluded_paths ?? ["**/*.test.ts", "**/__tests__/**"],
-      },
-      "pattern-regex": regexes.length === 1 ? regexes[0] : `(${regexes.join("|")})`,
-    };
-  });
+  const selected = semgrepTruths(registry);
+  const workspaceRules = selected.filter((truth) => !requiresDiffScan(truth)).map(ruleFor);
+  const diffScanRules = selected.filter(requiresDiffScan).map(ruleFor);
 
-  const semgrep = stringifyYaml({ rules: semgrepRules });
+  const semgrep = WORKSPACE_HEADER + stringifyYaml({ rules: workspaceRules });
+  const semgrepDiffScan = DIFF_SCAN_HEADER + stringifyYaml({ rules: diffScanRules });
 
   const instructions = coderabbitTruths(registry).map((truth) => ({
     path: truth.executor.coderabbit_path ?? (truth.applies_to.paths?.[0] ?? "**"),
@@ -64,6 +114,12 @@ export function compileRegistry(registry: Registry): CompileResult {
     },
   });
 
+  // Truths that name Semgrep but compile to nothing are rejected at registry
+  // load. This stays as a belt-and-braces report for non-live truths.
+  const unemittable = registry.truths
+    .filter((truth) => truth.executor.emit === "semgrep" && !isSemgrepEmittable(truth))
+    .map((truth) => truth.id);
+
   const manifestLines = [
     `# ${registry.tenant.name} emitters`,
     "",
@@ -72,17 +128,35 @@ export function compileRegistry(registry: Registry): CompileResult {
     "Do not use these files as a second AI reviewer.",
     "",
     `Live truths: ${registry.truths.filter((truth) => truth.status === "live").length}`,
-    `Semgrep rules: ${semgrepRules.length}`,
+    `Semgrep rules (whole checkout, semgrep.yml): ${workspaceRules.length}`,
+    `Semgrep rules (diff scan only, semgrep-diff-scan.yml): ${diffScanRules.length}`,
     `CodeRabbit path instructions: ${instructions.length}`,
     `Visible gaps: ${registry.truths.filter((truth) => truth.status === "gap" || truth.status === "proposed").length}`,
     "",
+    "## Scope matters",
+    "",
+    "`semgrep-diff-scan.yml` rules come from truths that only adjudicate added",
+    "lines. They must be run with `--baseline-commit`; a repository-wide run",
+    "reports pre-existing code the truth does not claim.",
+    "",
   ];
+
+  if (unemittable.length > 0) {
+    manifestLines.push(
+      "## Declared emit: semgrep but produced no rule",
+      "",
+      ...unemittable.map((id) => `- ${id}`),
+      "",
+    );
+  }
 
   return {
     tenant: registry.tenant.id,
     semgrep,
+    semgrepDiffScan,
     coderabbit,
     manifest: manifestLines.join("\n"),
+    unemittable,
   };
 }
 
@@ -90,6 +164,7 @@ export function writeCompileResult(registry: Registry, outDir: string): CompileR
   const compiled = compileRegistry(registry);
   mkdirSync(outDir, { recursive: true });
   writeFileSync(join(outDir, "semgrep.yml"), compiled.semgrep, "utf8");
+  writeFileSync(join(outDir, "semgrep-diff-scan.yml"), compiled.semgrepDiffScan, "utf8");
   writeFileSync(join(outDir, "coderabbit-path-instructions.yaml"), compiled.coderabbit, "utf8");
   writeFileSync(join(outDir, "MANIFEST.md"), compiled.manifest, "utf8");
   return compiled;

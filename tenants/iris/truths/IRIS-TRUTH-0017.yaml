@@ -6,12 +6,13 @@ statement: >
   remain reachable after calendar and assets refactors. This stays a gap until
   a stable source selector is named the same way Generate Campaign is.
 status: gap
+# No files are named on purpose. The gap is precisely that no stable selector
+# exists for these actions yet, so there is nothing to assert about any file.
+# Naming one without an assertion would look like coverage.
 executor:
   kind: product
   blocking: false
   emit: none
-  files:
-    - src/features/publishing/calendar/PublisherCalendarPage.tsx
 applies_to:
   repositories:
     - ignitetech-group/iris-web

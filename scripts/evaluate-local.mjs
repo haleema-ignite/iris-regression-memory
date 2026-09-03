@@ -1,13 +1,43 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
+import { parse as parseYaml } from "yaml";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = join(repoRoot, "benchmarks", "iris-historical.json");
 const cliPath = join(repoRoot, "dist", "cli.cjs");
+
+/**
+ * Score a case against its per-truth expectations.
+ *
+ * A single `contract` field could not express the shape of a fix case: PRs 860
+ * and 921 are the *fix* for IRIS-BEH-0007, so that truth must pass, while the
+ * overall verdict still fails on the unrelated IRIS-TRUTH-0009 leftover. Scored
+ * against one field, they looked like "detected only by another truth" and
+ * dragged attributed recall down for no reason.
+ */
+function scoreExpectations(item, findings) {
+  const byId = new Map(findings.map((finding) => [finding.truthId, finding]));
+  const problems = [];
+  for (const id of item.mustFailTruths ?? []) {
+    const finding = byId.get(id);
+    if (!finding) problems.push(`${id} was not evaluated but must fail`);
+    else if (finding.verdict !== "fail") problems.push(`${id} is ${finding.verdict} but must fail`);
+  }
+  for (const id of item.mustPassTruths ?? []) {
+    const finding = byId.get(id);
+    if (!finding) problems.push(`${id} was not evaluated but must pass`);
+    else if (finding.verdict !== "pass") problems.push(`${id} is ${finding.verdict} but must pass`);
+  }
+  for (const id of item.mustNotFailTruths ?? []) {
+    const finding = byId.get(id);
+    if (finding && finding.verdict === "fail") problems.push(`${id} failed but must not`);
+  }
+  return problems;
+}
 
 function argValue(name) {
   const index = process.argv.indexOf(name);
@@ -59,6 +89,11 @@ function summarize(cases) {
     falsePositives: 0,
     expectedInconclusive: 0,
     correctAbstentions: 0,
+    // Of the expected-fail cases, how many failed on the truth they were filed
+    // under rather than on an unrelated standing ratchet.
+    expectationsMet: 0,
+    expectationsViolated: 0,
+    violations: [],
   };
 
   for (const item of cases) {
@@ -76,9 +111,20 @@ function summarize(cases) {
     }
   }
 
+  for (const item of cases) {
+    if ((item.expectationProblems ?? []).length === 0) summary.expectationsMet += 1;
+    else {
+      summary.expectationsViolated += 1;
+      summary.violations.push({ id: item.id, problems: item.expectationProblems });
+    }
+  }
   summary.recall = summary.expectedFail === 0
     ? null
     : summary.detectedFail / summary.expectedFail;
+  // The number to quote: every named truth did what the case says it must.
+  summary.perTruthAccuracy = cases.length === 0
+    ? null
+    : summary.expectationsMet / cases.length;
   summary.precision = summary.detectedFail + summary.falsePositives === 0
     ? null
     : summary.detectedFail / (summary.detectedFail + summary.falsePositives);
@@ -124,7 +170,11 @@ for (const item of manifest.cases) {
   requireSuccess(diff, `${item.id}: git diff`);
 
   const treeSha = item.reverse ? item.base : item.head;
+  const baseSha = item.reverse ? item.head : item.base;
   const materialized = materializeTree(checkout, treeSha);
+  // The base tree too, so a workspace failure can be attributed rather than
+  // reported as unknown. Without it every ratchet reads as unattributed.
+  const materializedBase = materializeTree(checkout, baseSha);
   let assessment;
   try {
     const assessmentRun = run(
@@ -140,6 +190,8 @@ for (const item of manifest.cases) {
         "/dev/stdin",
         "--workspace",
         materialized,
+        "--base-workspace",
+        materializedBase,
         "--json",
       ],
       {
@@ -154,6 +206,7 @@ for (const item of manifest.cases) {
     assessment = JSON.parse(assessmentRun.stdout);
   } finally {
     rmSync(materialized, { recursive: true, force: true });
+    rmSync(materializedBase, { recursive: true, force: true });
   }
 
   results.push({
@@ -164,9 +217,15 @@ for (const item of manifest.cases) {
     incident: item.incident,
     contract: item.contract,
     reverse: Boolean(item.reverse),
-    expected: item.expected,
+    expected: item.expectedVerdict,
     actual: assessment.verdict,
-    matched: item.expected === assessment.verdict,
+    matched: item.expectedVerdict === assessment.verdict,
+    outcome_detail: assessment.outcome,
+    expectationProblems: scoreExpectations(item, assessment.findings),
+    introducedFailures: assessment.truthCoverage.introducedFailures,
+    preexistingFailures: assessment.truthCoverage.preexistingFailures,
+    unattributedFailures: assessment.truthCoverage.unattributedFailures,
+    delegated: assessment.truthCoverage.delegated,
     diffBytes: Buffer.byteLength(diff.stdout),
     durationMs: Number((performance.now() - startedAt).toFixed(1)),
     outcome: assessment.outcome,

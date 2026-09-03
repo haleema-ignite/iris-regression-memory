@@ -5,6 +5,9 @@ statement: >
   PublisherCalendarPage must import GenerateCampaignPanel and pass
   onGenerateCampaign into the header so the control is not a dead label.
 status: live
+proves: >
+  that the page still imports the panel and still passes a handler into the
+  header, matched outside comments. It does not prove the panel opens.
 executor:
   kind: product
   blocking: true
@@ -13,7 +16,11 @@ executor:
     - src/features/publishing/calendar/PublisherCalendarPage.tsx
   must_contain:
     - GenerateCampaignPanel
-    - onGenerateCampaign
+  # The handler must be wired into the header, not merely mentioned. A comment
+  # reading "Generate Campaign panel state" must not satisfy this.
+  must_contain_patterns:
+    - "onGenerateCampaign\\s*=\\s*\\{"
+    - "<\\s*GenerateCampaignPanel"
 applies_to:
   repositories:
     - ignitetech-group/iris-web
@@ -34,4 +41,4 @@ governance:
   owner: publisher-maintainers
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 2

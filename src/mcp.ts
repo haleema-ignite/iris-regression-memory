@@ -5,7 +5,7 @@ import { assess } from "./assess.ts";
 import { compileRegistry } from "./compile.ts";
 import { parseUnifiedDiff } from "./diff.ts";
 import { runAssessment } from "./cli.ts";
-import { loadRegistry } from "./registry.ts";
+import { assertKnownRepository, loadRegistry } from "./registry.ts";
 import { repoMatches } from "./glob.ts";
 import { renderMarkdown } from "./report.ts";
 import { createFsWorkspace } from "./workspace.ts";
@@ -26,22 +26,28 @@ export function createTruthCompilerServer(): McpServer {
     "assess_diff",
     {
       title: "Assess a unified diff",
-      description: "Assess a unified diff against live truths. Deterministic. LLM is not the merge gate.",
+      description:
+        "Assess a unified diff against live truths. Deterministic. LLM is not the merge gate. " +
+        "Requires a checkout: product, decision and workspace-mode truths are proved against it.",
       inputSchema: z.object({
         repository: z.string().min(3),
         unifiedDiff: z.string().min(1),
         tenant: z.string().min(2).optional(),
-        workspace: z.string().optional(),
+        // Required, matching the CLI. A file reconstructed from hunk context is
+        // not the file, so a product surface cannot be proved from a diff.
+        workspace: z.string().min(1),
       }),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     },
     async ({ repository, unifiedDiff, tenant, workspace }) => {
+      const registry = loadRegistry(tenant ?? "iris");
+      assertKnownRepository(registry, repository);
       const assessment = assess({
         repo: repository,
         diff: parseUnifiedDiff(unifiedDiff),
         source: "mcp:unified-diff",
-        registry: loadRegistry(tenant ?? "iris"),
-        workspace: workspace ? createFsWorkspace(workspace) : undefined,
+        registry,
+        workspace: createFsWorkspace(workspace),
       });
       return toolResult({ assessment, markdown: renderMarkdown(assessment) });
     },
@@ -57,7 +63,7 @@ export function createTruthCompilerServer(): McpServer {
         pullRequest: z.number().int().positive(),
         sourceRepository: z.string().min(3).optional(),
         tenant: z.string().min(2).optional(),
-        workspace: z.string().optional(),
+        workspace: z.string().min(1),
       }),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },

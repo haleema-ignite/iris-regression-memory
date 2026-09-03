@@ -3,22 +3,40 @@ tenant: iris
 title: Hidden and unknown community boards fail closed
 statement: >
   Community polling must drop hidden or unknown boards unless an explicit
-  includeHidden override is set. Missing bulk-map entries are not visible.
+  includeHidden override is set. A board missing from the bulk map must be
+  resolved by id, and an unresolvable board must fail closed rather than
+  publish.
 status: live
+proves: >
+  that the by-id resolver, the includeHidden override, and the unknown-board
+  drop are all still present together in the polling sources. It does not run
+  LIQL; only a live probe proves the API behaves as the map claims, which is
+  IRIS-TRUTH-0016.
+# Restored to live on 2026-09-02 after a provenance error.
+#
+# This truth was briefly demoted to `gap` on the belief that the engine had no
+# hidden-board handling at all. That reading came from a dirty local feature
+# branch (codex/youtube-multi-channel-runtime) that predates the IRISNG-3231
+# fix. The fix is present on both canonical branches:
+#
+#   origin/main    9096fb2d6ac83c775fc7f117fbe9e4a617dcfce5
+#   origin/develop b516fb5836dd79bd1534c79b27d2415aa8db55ac
+#
+# with `resolveBoardVisibility` for by-id lookup (polling.component.ts),
+# `cfg.includeHidden` for the override and `'unknown-board'` for the
+# missing-map-entry drop (filtering.ts). All three tokens verified present on
+# both branches. The previous signals (`fail closed`, `fail open`) were prose
+# that matched only a fixture written to contain them.
 executor:
   kind: pattern
   blocking: true
   emit: none
-  mode: both
+  mode: workspace
   require_present: true
-  forbidden_signals:
-    - fail open
-    - treat missing board as visible
-    - assume visible when absent
-    - default includeHidden true
   required_signals:
-    - fail closed
-    - includeHidden
+    - resolveBoardVisibility
+    - cfg.includeHidden
+    - "'unknown-board'"
 applies_to:
   repositories:
     - ignitetech-group/iris-sp-engines
@@ -38,8 +56,9 @@ failure_mechanism: >
   bulk map that included hidden boards; live LIQL omits them.
 required_guards:
   - Resolve missing boards by id and drop unless includeHidden is explicit
+  - Fail closed when a by-id visibility lookup cannot classify a board
 governance:
   owner: social-platform-team
-  approved_at: 2026-09-01
+  approved_at: 2026-09-02
   review_after: 2027-03-01
-  version: 2
+  version: 4

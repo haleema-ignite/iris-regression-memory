@@ -1,0 +1,50 @@
+id: IRIS-TRUTH-0021
+tenant: iris
+title: Kafka consumer rebalance tuning must stay deliberate
+statement: >
+  The SDK Kafka consumer's sessionTimeout, rebalanceTimeout and
+  heartbeatInterval were tuned in response to rebalance storms during
+  autoscaling. A new engine copied from a stale template must not silently
+  revert them.
+# Proposed because the recorded values disagree with the code, and that has to be
+# resolved by an owner before anything is enforced.
+#
+# IRIS/CLAUDE.md documents sessionTimeout 120000, rebalanceTimeout 120000 and
+# heartbeatInterval 5000, described as "24 missed heartbeats before eviction".
+# sdk/src/kafka-consumer.ts:52-54 actually sets 10000 / 30000 / 3000, with a
+# comment at line 49 reasoning about a ~90s budget and the KafkaJS rule that
+# heartbeatInterval stay at or below a third of sessionTimeout.
+#
+# Verified identical on both canonical branches, so this is not a branch
+# artefact:
+#   origin/main    9096fb2d6ac83c775fc7f117fbe9e4a617dcfce5 — 10000/30000/3000
+#   origin/develop b516fb5836dd79bd1534c79b27d2415aa8db55ac — 10000/30000/3000
+#
+# One of the two is stale. Encoding either as a truth right now would ratchet the
+# wrong number into place, which is worse than no check: it would generate
+# failures against correct code, or bless a regression. The first task is to
+# decide which is current.
+status: proposed
+executor:
+  kind: contract
+  blocking: false
+  emit: none
+applies_to:
+  repositories:
+    - ignitetech-group/iris-sp-engines
+  paths:
+    - sdk/src/kafka-consumer.ts
+evidence:
+  - type: confluence
+    url: https://ignitetechpm.atlassian.net/wiki/spaces/IRIS/pages/1259995138
+    note: >
+      Anti-rebalance tuning documented as 120000/120000/5000; sdk code sets
+      10000/30000/3000. Discrepancy found while reviewing the trial registry.
+required_guards:
+  - >
+    Reconcile IRIS/CLAUDE.md against sdk/src/kafka-consumer.ts and record the
+    current intended values, then encode them as forbidden_line_patterns on the
+    stale ones.
+governance:
+  owner: social-platform-team
+  version: 2

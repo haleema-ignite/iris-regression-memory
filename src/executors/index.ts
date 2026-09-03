@@ -1,4 +1,4 @@
-import { fail, type ExecutorContext, type ExecutorResult } from "./common.ts";
+import { delegated, fail, type ExecutorContext, type ExecutorResult } from "./common.ts";
 import { runContract } from "./contract.ts";
 import { runDecision } from "./decision.ts";
 import { runPattern } from "./pattern.ts";
@@ -16,19 +16,17 @@ export function runExecutor(ctx: ExecutorContext): ExecutorResult {
     case "decision":
       return runDecision(ctx);
     case "coderabbit":
-      return {
-        verdict: "pass",
-        reason: `${ctx.truth.id} is delegated to CodeRabbit (${ctx.truth.executor.coderabbit_path ?? "path instruction"}). The compiler does not LLM-judge this class.`,
-        evidence: {
-          kind: "delegated",
-          detail: ctx.truth.executor.coderabbit_instruction ?? "CodeRabbit path instruction",
-        },
-      };
+      return delegated(
+        `${ctx.truth.id} is delegated to CodeRabbit (${ctx.truth.executor.coderabbit_path ?? "path instruction"}). ` +
+        "The compiler asserts nothing about this class and does not count it as a verified pass.",
+        ctx.truth.executor.coderabbit_instruction ?? "CodeRabbit path instruction",
+      );
     default: {
       const kind: never = ctx.truth.executor.kind;
       return fail(`Unknown executor ${String(kind)}`, {
         kind: "none",
         detail: "unknown executor",
+        scope: "none",
       });
     }
   }

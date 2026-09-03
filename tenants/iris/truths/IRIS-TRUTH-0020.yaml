@@ -1,0 +1,50 @@
+id: IRIS-TRUTH-0020
+tenant: iris
+title: Engines that feed Care and Marketing must keep dual publish configured
+statement: >
+  An engine that feeds both the Care and Marketing pipelines must configure dual
+  publish, so a post reaches sp.posts.filtered and mkt.{platform}.collected as
+  well as its own collected topic. Dropping the marketing leg is silent: Care
+  keeps working and marketing dashboards quietly stop receiving data.
+# Proposed, not live, and deliberately so.
+#
+# `configureDualPublish` is real (sdk/src/kafka-producer.ts), but only a minority
+# of engines call it, and the count differs by branch:
+#
+#   origin/main    9096fb2d6ac83c775fc7f117fbe9e4a617dcfce5 — 6 of 28 engines
+#   origin/develop b516fb5836dd79bd1534c79b27d2415aa8db55ac — 8 of 29 engines
+#
+# An earlier draft of this file said "7 of 28". That number came from a dirty
+# local feature branch and matched neither canonical branch; it is corrected
+# here. The lesson is recorded in docs/truth-authoring.md: a count is only a
+# fact if it names the branch and SHA it was taken from.
+#
+# A truth requiring every engine to call it would report ~22 failures on day
+# one, most of which are engines that legitimately do not feed both pipelines.
+#
+# To make this live, social-platform-team needs to name which engines are
+# dual-pipeline. Then this becomes a required_signals check scoped to exactly
+# those engines' index.ts, which is precise and cheap. Until that list exists,
+# recording it as a proposal is the honest state: the fact is real, the scope is
+# unknown.
+status: proposed
+executor:
+  kind: pattern
+  blocking: false
+  emit: none
+applies_to:
+  repositories:
+    - ignitetech-group/iris-sp-engines
+  paths:
+    - engines/*/src/index.ts
+evidence:
+  - type: confluence
+    url: https://ignitetechpm.atlassian.net/wiki/spaces/IRIS/pages/1259995138
+    note: SP Engines architecture — dual Kafka publish to Care and Marketing
+required_guards:
+  - >
+    Name the dual-pipeline engines, then scope a required_signals check for
+    configureDualPublish to those engines only.
+governance:
+  owner: social-platform-team
+  version: 2

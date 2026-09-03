@@ -52,7 +52,6 @@ describe("historical pattern replays still fail the migrated truths", () => {
     ["fixtures/positive/single-app-secret.diff", enginesRepo, "IRIS-TRUTH-0011", "fail"],
     ["fixtures/positive/engine-wide-auth.diff", enginesRepo, "IRIS-TRUTH-0013", "fail"],
     ["fixtures/positive/skip-profile-lookup.diff", enginesRepo, "IRIS-TRUTH-0014", "fail"],
-    ["fixtures/positive/unstable-doc-src-id.diff", enginesRepo, "IRIS-TRUTH-0015", "fail"],
     ["fixtures/replay/meta-signature-fix-forward.diff", enginesRepo, "IRIS-TRUTH-0011", "pass"],
     ["fixtures/replay/meta-signature-fix-reverse.diff", enginesRepo, "IRIS-TRUTH-0011", "fail"],
     ["fixtures/replay/instagram-watermark-fix-forward.diff", enginesRepo, "IRIS-TRUTH-0007", "pass"],
@@ -111,12 +110,83 @@ describe("product truths", () => {
     assert.ok(result.findings.find((finding) => finding.truthId === "IRIS-TRUTH-0001")?.matchReasons.includes("always_on"));
   });
 
-  it("fails a blocking product truth without a checkout", () => {
+  it("refuses to adjudicate a product truth without a checkout", () => {
+    // Previously this returned `fail` with kind `workspace_required`, which
+    // reported a missing checkout as a failed product fact. A diff cannot prove
+    // a surface exists — the file reconstructed from hunk context is not the
+    // file — so the executor refuses.
+    //
+    // The refusal surfaces as an `error` verdict, not a failed fact: a truth
+    // that could not run has proved nothing in either direction, and calling it
+    // a failure invites someone to "fix" a configuration problem by editing
+    // product code. One unevaluable truth must not discard the rest of the run.
     const result = assessFixture("fixtures/diffs/web-readme-only.diff", webRepo);
-    assert.equal(result.verdict, "fail");
-    assert.ok(result.findings.some((finding) =>
-      finding.truthId === "IRIS-TRUTH-0001" && finding.evidence.kind === "workspace_required",
-    ));
+    const finding = result.findings.find((item) => item.truthId === "IRIS-TRUTH-0001");
+    assert.equal(finding?.verdict, "error");
+    assert.equal(finding?.proofScope, "not_evaluated");
+    assert.equal(finding?.blocking, false);
+    assert.equal(result.truthCoverage.failed, 0, "an unevaluable truth is not a failed fact");
+    assert.match(finding?.evidence.detail ?? "", /executor error/);
+    assert.match(finding?.reason ?? "", /cannot be adjudicated without a checkout/);
+    // Every other selected truth was still evaluated.
+    assert.ok(result.findings.length > 1, "other truths must still be assessed");
+  });
+
+  it("detects the control being deleted when comments still name it", () => {
+    // The regression that motivated IRIS-TRUTH-0001 left
+    // `{/* Generate Campaign Button */}` and the `onGenerateCampaign` prop
+    // behind. A substring check passed on that. Requiring the label as JSX text,
+    // matched outside comments, is what makes this detectable.
+    const result = assess({
+      repo: webRepo,
+      diff: parseUnifiedDiff(readRel("fixtures/diffs/drop-generate-campaign.diff")),
+      source: "comment-ghost",
+      registry,
+      workspace: workspace("fixtures/workspaces/iris-web-comment-ghost"),
+      // The control was there before this change, so failing now is on this change.
+      baseWorkspace: workspace("fixtures/workspaces/iris-web-ok"),
+    });
+    const finding = result.findings.find((item) => item.truthId === "IRIS-TRUTH-0001");
+    assert.equal(finding?.verdict, "fail", JSON.stringify(result.findings, null, 2));
+    assert.equal(finding?.failureClass, "introduced");
+    assert.match(finding?.evidence.detail ?? "", /Generate Campaign/);
+    assert.equal(result.outcome, "fact_failed");
+    // The healthy page and promotion grep in this workspace must still pass, so
+    // the failure is attributed to the header alone.
+    assert.equal(result.findings.find((item) => item.truthId === "IRIS-TRUTH-0002")?.verdict, "pass");
+    assert.equal(result.findings.find((item) => item.truthId === "IRIS-TRUTH-0003")?.verdict, "pass");
+  });
+
+  it("detects the panel being deleted when a JSX comment still names it", () => {
+    // The same ghost as IRIS-TRUTH-0001, one level up: the panel is gone from
+    // PublisherCalendarPage but `{/* <GenerateCampaignPanel ... /> */}` remains.
+    const result = assess({
+      repo: webRepo,
+      diff: parseUnifiedDiff([
+        "diff --git a/src/features/publishing/calendar/PublisherCalendarPage.tsx b/src/features/publishing/calendar/PublisherCalendarPage.tsx",
+        "--- a/src/features/publishing/calendar/PublisherCalendarPage.tsx",
+        "+++ b/src/features/publishing/calendar/PublisherCalendarPage.tsx",
+        "@@ -1,2 +1,2 @@",
+        "-      <GenerateCampaignPanel onGenerateCampaign={h} />",
+        "+      </div>{/* <GenerateCampaignPanel onGenerateCampaign={h} /> */}",
+      ].join("\n")),
+      source: "jsx-ghost",
+      registry,
+      workspace: {
+        root: "/memory",
+        read: (path: string) => ({
+          "src/features/publishing/calendar/PublisherCalendarPage.tsx":
+            "export function Page() {\n  return (\n    <section>\n      </div>{/* <GenerateCampaignPanel onGenerateCampaign={h} /> */}\n    </section>\n  );\n}",
+          "src/features/publishing/calendar/components/PublisherCalendarHeader.tsx":
+            "export function Header({ onGenerateCampaign }) {\n  return <button onClick={onGenerateCampaign}>Generate Campaign</button>;\n}",
+          ".github/workflows/qa001-deploy.yaml": "test_grep: \"P14|Generate Campaign\"",
+        })[path],
+        list: () => [],
+      },
+    });
+    assert.equal(result.findings.find((item) => item.truthId === "IRIS-TRUTH-0002")?.verdict, "fail");
+    // The header is genuinely intact, so 0001 must not be dragged down with it.
+    assert.equal(result.findings.find((item) => item.truthId === "IRIS-TRUTH-0001")?.verdict, "pass");
   });
 
   it("keeps P14 in the iris-e2e catalog", () => {
@@ -188,30 +258,56 @@ describe("contract and decision truths", () => {
     ));
   });
 
-  it("fails hidden-board fail-open", () => {
-    const result = assessFixture("fixtures/diffs/hidden-board-fail-open.diff", enginesRepo);
-    assert.equal(result.verdict, "fail");
-    assert.ok(result.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0012" && finding.verdict === "fail"));
+  it("adjudicates community board visibility against the real guard tokens", () => {
+    // 0012 is live and names the tokens the IRISNG-3231 fix actually uses:
+    // resolveBoardVisibility, cfg.includeHidden and the 'unknown-board' drop.
+    // All three are present on origin/main and origin/develop.
+    const guarded = [
+      "const board = boardsMap.get(boardId);",
+      "if (!boardsMap.has(boardId)) return { keep: false, reason: 'unknown-board' };",
+      "if (board?.hidden === true && !cfg.includeHidden) return { keep: false, reason: 'hidden' };",
+      "await rt.client.resolveBoardVisibility(id);",
+    ].join("\n");
+    const holds = assess({
+      repo: enginesRepo,
+      diff: parseUnifiedDiff(readRel("fixtures/diffs/community-no-board-filter.diff")),
+      source: "community-guarded",
+      registry,
+      workspace: {
+        root: "/memory",
+        read: (path: string) =>
+          path === "engines/community/src/polling/filtering.ts" ? guarded : undefined,
+        list: () => ["engines/community/src/polling/filtering.ts"],
+      },
+    });
+    assert.equal(holds.findings.find((item) => item.truthId === "IRIS-TRUTH-0012")?.verdict, "pass");
+
+    // A checkout that predates the fix fails it.
+    const missing = assess({
+      repo: enginesRepo,
+      diff: parseUnifiedDiff(readRel("fixtures/diffs/community-no-board-filter.diff")),
+      source: "community-unguarded",
+      registry,
+      workspace: {
+        root: "/memory",
+        read: (path: string) =>
+          path === "engines/community/src/polling/filtering.ts" ? "export const poll = 1;" : undefined,
+        list: () => ["engines/community/src/polling/filtering.ts"],
+      },
+    });
+    assert.equal(missing.findings.find((item) => item.truthId === "IRIS-TRUTH-0012")?.verdict, "fail");
   });
 
-  it("fails a community engine that never had board filtering", () => {
-    const result = assessFixture("fixtures/diffs/community-no-board-filter.diff", enginesRepo);
-    assert.equal(result.verdict, "fail", JSON.stringify(result.findings, null, 2));
-    assert.ok(result.findings.some((finding) =>
-      finding.truthId === "IRIS-TRUTH-0012" &&
-      finding.verdict === "fail" &&
-      finding.evidence.detail.includes("required guard"),
-    ));
-  });
-
-  it("passes a community log-only change when the checkout still fail-closes hidden boards", () => {
-    const result = assessFixture(
-      "fixtures/diffs/community-log-only.diff",
-      enginesRepo,
-      "fixtures/workspaces/community-ok",
-    );
-    const finding = result.findings.find((item) => item.truthId === "IRIS-TRUTH-0012");
-    assert.equal(finding?.verdict, "pass", JSON.stringify(result.findings, null, 2));
+  it("keeps demoted truths visible as gaps rather than dropping them", () => {
+    const result = assessFixture("fixtures/negative/readme-only.diff", enginesRepo);
+    const gapIds = result.truthCoverage.gaps.map((gap) => gap.truthId);
+    // 0012 and 0015 were demoted because their checks could not hold against the
+    // real repositories; 0020-0022 are new proposals. None may silently vanish.
+    // Engine-scoped unfinished coverage: 0015 and 0016 are gaps, 0020 and 0021
+    // are proposals awaiting an owner's decision. None may silently vanish.
+    for (const id of ["IRIS-TRUTH-0015", "IRIS-TRUTH-0016", "IRIS-TRUTH-0020", "IRIS-TRUTH-0021"]) {
+      assert.ok(gapIds.includes(id), `${id} must stay visible as a gap`);
+    }
   });
 });
 
@@ -267,7 +363,7 @@ diff --git a/src/uncovered.ts b/src/uncovered.ts
     ]);
   });
 
-  it("does not LLM-judge: CodeRabbit truths are delegated", () => {
+  it("does not LLM-judge: CodeRabbit truths are delegated, not passed", () => {
     const result = assessFixture(
       "fixtures/diffs/drop-generate-campaign.diff",
       webRepo,
@@ -275,7 +371,14 @@ diff --git a/src/uncovered.ts b/src/uncovered.ts
     );
     const delegated = result.findings.find((finding) => finding.truthId === "IRIS-TRUTH-0018");
     assert.equal(delegated?.executor, "coderabbit");
-    assert.equal(delegated?.verdict, "pass");
+    // A hand-off verified nothing, so it must not be counted as a pass.
+    assert.equal(delegated?.verdict, "delegated");
     assert.equal(delegated?.evidence.kind, "delegated");
+    assert.ok(
+      !result.findings.some((finding) =>
+        finding.truthId === "IRIS-TRUTH-0018" && finding.verdict === "pass",
+      ),
+    );
+    assert.equal(result.truthCoverage.delegated, 1);
   });
 });

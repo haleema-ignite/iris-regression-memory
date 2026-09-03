@@ -1,7 +1,9 @@
-import { containsIgnoreCase } from "../text.ts";
+import { cachedRegex, containsIgnoreCase, stripComments } from "../text.ts";
 import {
   fail,
   isAllowlisted,
+  isGeneratedPath,
+  isScannableBody,
   pass,
   relevantDiffFiles,
   type ExecutorContext,
@@ -11,10 +13,12 @@ import {
 export function runDecision(ctx: ExecutorContext): ExecutorResult {
   const { truth, diff, workspace } = ctx;
   const tokens = truth.executor.leftover_tokens ?? [];
-  if (tokens.length === 0) {
+  const patterns = truth.executor.leftover_patterns ?? [];
+  if (tokens.length === 0 && patterns.length === 0) {
     return fail(`${truth.id} is misconfigured: a decision truth must name leftover tokens.`, {
       kind: "none",
-      detail: "missing leftover_tokens",
+      detail: "missing leftover_tokens and leftover_patterns",
+      scope: "none",
     });
   }
 
@@ -26,9 +30,11 @@ export function runDecision(ctx: ExecutorContext): ExecutorResult {
   ]);
 
   for (const path of candidatePaths) {
-    if (isAllowlisted(truth, path)) continue;
-    const body = workspace.read(path);
-    if (body === undefined) continue;
+    if (isAllowlisted(truth, path) || isGeneratedPath(path)) continue;
+    const raw = workspace.read(path);
+    if (raw === undefined || !isScannableBody(raw)) continue;
+    // A leftover requirement is code, not a comment describing history.
+    const body = stripComments(raw, path);
     for (const token of tokens) {
       if (containsIgnoreCase(body, token)) {
         return fail(
@@ -37,6 +43,20 @@ export function runDecision(ctx: ExecutorContext): ExecutorResult {
             kind: "stale_decision",
             detail: `found leftover \`${token}\``,
             path,
+            scope: "workspace",
+          },
+        );
+      }
+    }
+    for (const source of patterns) {
+      if (cachedRegex(source).test(body)) {
+        return fail(
+          `${truth.id}: a leftover decision requirement matching \`${source}\` is still present.`,
+          {
+            kind: "stale_decision",
+            detail: `found leftover matching \`${source}\``,
+            path,
+            scope: "workspace",
           },
         );
       }

@@ -12,10 +12,12 @@ describe("packaged GitHub Action", () => {
   const root = new URL("../../", import.meta.url);
   const manifest = parseYaml(readFileSync(new URL("action.yml", root), "utf8")) as ActionManifest;
 
-  it("defaults to blocking error mode with a tenant input", () => {
+  it("defaults to warning mode for the trial, with a tenant input", () => {
     assert.equal(manifest.inputs?.token?.required, true);
     assert.equal(manifest.inputs?.tenant?.default, "iris");
-    assert.equal(manifest.inputs?.enforcement?.default, "error");
+    // The trial must not be able to block a merge. Promotion to `error` is per
+    // truth and happens only after live validation.
+    assert.equal(manifest.inputs?.enforcement?.default, "warning");
     assert.equal(manifest.runs?.using, "node24");
   });
 

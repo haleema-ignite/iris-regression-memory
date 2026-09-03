@@ -1,9 +1,32 @@
-# Drop this into an IRIS service repository (iris-web, iris-api, iris-sp-engines, iris-e2e).
-# The Action checks out this service (GITHUB_WORKSPACE) and loads truths from the compiler repo.
+# EXAMPLE ONLY — do not copy this into an IRIS service repository yet.
+#
+# The trial is local and warning-only. Nothing here has run against a live pull
+# request, several truths are still gaps, and two are standing ratchets against
+# leftovers already in tree. Read docs/rollout.md before enabling any automatic
+# trigger; it lists what has to be true first.
+#
+# When that day comes, this is the shape. Two things are deliberate:
+#
+#   enforcement: warning
+#     Start non-blocking. Promotion to `error` is per truth after live
+#     validation, never a global flip. Even in `error` mode, only failures this
+#     change introduced exit nonzero — a pre-existing ratchet stays neutral.
+#
+#   actions/checkout of the service itself
+#     Product, decision and workspace-mode truths read the checkout. A diff
+#     alone cannot prove a product surface exists, so the CLI refuses to run
+#     without a workspace. Never use pull_request_target here: it would grant
+#     write scope to a run that reads pull-request contents.
 
 name: Truth Compiler
 
 on:
+  # The Action reads the pull_request event payload, so this is the only trigger
+  # it supports. To shadow-test before enabling it here, run the CLI by hand
+  # against merged pull requests instead:
+  #
+  #   npm run assess -- --tenant iris --repo <owner/name> --pr <n> \
+  #     --workspace /path/to/checkout
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -19,9 +42,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: haleema-ignite/iris-regression-memory@v1
+      - uses: haleema-ignite/iris-regression-memory@trial
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tenant: iris
-          enforcement: error
+          enforcement: warning
           comment: "true"

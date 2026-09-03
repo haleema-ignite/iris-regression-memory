@@ -5,20 +5,31 @@ statement: >
   Retrying or replaying the same platform event must not publish a second
   logical post or open a second customer case.
 status: live
+proves: >
+  that this change did not add an unstable dedup key and did not delete SeenIdCache or the webhook last-seen recorder. It does not prove idempotency holds.
 legacy_id: IRIS-BEH-0001
 executor:
   kind: pattern
   blocking: true
   emit: none
   mode: added_lines
+  # `Date.now() as dedup` was prose and never matched code. `Math.random()` was
+  # removed because it is the ordinary way to jitter a retry backoff in these
+  # polling components, so forbidding it outright across every Facebook and
+  # Instagram webhook and polling path is a false positive waiting to happen.
+  # The two remaining tokens name the anti-pattern from the RCA directly.
   forbidden_signals:
-    - Date.now() as dedup
-    - Math.random()
     - derivedDedupKey
     - hash(enriched
+  # `hasSeen` and `platformPostId` do not exist in these paths, so they could
+  # never be detected as removed. These are the real dedup carriers: SeenIdCache
+  # in engines/facebook/src/polling, the webhook last-seen helpers in
+  # engines/facebook/src/webhook. Guards only fire when a change deletes one
+  # without replacement, so naming tokens that exist in a subset of the scoped
+  # files is safe and precise.
   required_signals:
-    - hasSeen
-    - platformPostId
+    - SeenIdCache
+    - recordWebhookEventLastSeen
 applies_to:
   repositories:
     - ignitetech-group/iris-sp-engines
@@ -43,4 +54,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 3

@@ -4,12 +4,13 @@ import { assess } from "./assess.ts";
 import { writeCompileResult } from "./compile.ts";
 import { filesToUnifiedDiff, parseUnifiedDiff } from "./diff.ts";
 import { fetchPullRequest, fetchPullRequestFiles } from "./github.ts";
-import { loadRegistry } from "./registry.ts";
+import { assertKnownRepository, loadRegistry } from "./registry.ts";
 import { renderMarkdown } from "./report.ts";
 import type { EnforcementMode } from "./report.ts";
 import { renderSarif } from "./sarif.ts";
 import type { Assessment } from "./types.ts";
 import { createFsWorkspace } from "./workspace.ts";
+import { checkoutDirty, checkoutSha, materializeBaseline } from "./baseline.ts";
 
 export type OutputFormat = "markdown" | "json" | "sarif";
 
@@ -21,6 +22,9 @@ export interface CliOptions {
   pr?: number;
   diffFile?: string;
   workspace?: string;
+  baseRef?: string;
+  baseWorkspace?: string;
+  allowRevisionMismatch?: boolean;
   format?: OutputFormat;
   enforcement?: EnforcementMode;
   outDir?: string;
@@ -53,6 +57,14 @@ export function parseArgs(argv: string[]): CliOptions {
     } else if (arg === "--workspace" && next) {
       options.workspace = next;
       i += 1;
+    } else if (arg === "--base-ref" && next) {
+      options.baseRef = next;
+      i += 1;
+    } else if (arg === "--base-workspace" && next) {
+      options.baseWorkspace = next;
+      i += 1;
+    } else if (arg === "--allow-revision-mismatch") {
+      options.allowRevisionMismatch = true;
     } else if (arg === "--json") {
       options.format = "json";
     } else if (arg === "--sarif") {
@@ -81,20 +93,30 @@ export function parseArgs(argv: string[]): CliOptions {
 
 function printHelp(): void {
   process.stdout.write(`Usage:
-  npx truth-compiler assess --tenant iris --repo owner/name --pr 413
+  npx truth-compiler assess --tenant iris --repo owner/name --pr 413 --workspace ../iris-web
   npx truth-compiler assess --tenant iris --repo owner/name --diff-file change.diff --workspace ../iris-web
   npx truth-compiler compile --tenant iris --out tenants/iris/emitters
   npx truth-compiler list --tenant iris
 
 Options:
   --tenant NAME       Tenant id (default: iris)
-  --repo owner/name   GitHub repository (required for assess)
+  --repo owner/name   GitHub repository, must be declared in tenant.yaml (required)
   --source-repo NAME  Repository from which to fetch the PR diff
   --pr N              Pull request number
   --diff-file PATH    Local unified diff instead of GitHub
-  --workspace DIR     Checkout to prove product, decision, and workspace facts
+  --workspace DIR     Checkout used to prove product, decision, and workspace
+                      facts (required for assess)
+  --base-ref REF      Materialize this ref from --workspace as the state before
+                      the change. Without a base state, workspace failures
+                      cannot be attributed and are reported as unknown.
+  --base-workspace DIR  An already-materialized base checkout, instead of --base-ref
+  --allow-revision-mismatch
+                      Proceed when --workspace is not at the pull request head.
+                      Conclusions are then labelled unverified.
   --format FORMAT     markdown (default), json, or sarif
-  --enforcement MODE  warning (exit 0) or error (exit 1 on a failed blocking truth)
+  --enforcement MODE  warning (exit 0, default) or error (exit 1 only for a
+                      blocking truth this change introduced; a pre-existing
+                      ratchet is reported and stays exit 0)
   --out DIR           Compile emitters to this directory
 `);
 }
@@ -106,34 +128,99 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
   if (!options.pr && !options.diffFile) {
     throw new Error("Provide --pr or --diff-file");
   }
+  // Product, decision and workspace-mode truths read the checkout. Without one,
+  // a file is reconstructed from hunk context alone, which is not the file — so
+  // an assessment could report a surface as missing because it was merely
+  // outside the diff. Refuse rather than produce that.
+  if (!options.workspace) {
+    throw new Error(
+      "--workspace DIR is required. Product, decision and workspace-mode truths " +
+      "must be proved against a checkout, not against a diff.",
+    );
+  }
 
   const registry = loadRegistry(options.tenant ?? "iris");
-  const workspace = options.workspace ? createFsWorkspace(resolve(options.workspace)) : undefined;
+  assertKnownRepository(registry, options.repo);
+  const workspaceRoot = resolve(options.workspace);
+  const workspace = createFsWorkspace(workspaceRoot);
 
-  if (options.diffFile) {
-    const raw = readFileSync(options.diffFile, "utf8");
+  const baseline = options.baseWorkspace
+    ? { workspace: createFsWorkspace(resolve(options.baseWorkspace)), sha: undefined, dispose: () => {} }
+    : options.baseRef
+      ? materializeBaseline(workspaceRoot, options.baseRef)
+      : undefined;
+
+  try {
+    if (options.diffFile) {
+      const raw = readFileSync(options.diffFile, "utf8");
+      return assess({
+        repo: options.repo,
+        diff: parseUnifiedDiff(raw),
+        source: options.diffFile,
+        registry,
+        workspace,
+        baseWorkspace: baseline?.workspace,
+        // A local diff carries no revision, so we cannot confirm it describes
+        // this checkout. Saying so is the only honest option: a diff that
+        // deletes a control, assessed against a checkout that still has it,
+        // otherwise produces a confident and wrong pass.
+        revision: {
+          verified: false,
+          workspaceSha: checkoutSha(workspaceRoot),
+          baseSha: baseline?.sha,
+          note: "a local diff file cannot be tied to this checkout; " +
+            "workspace conclusions are unverified",
+        },
+      });
+    }
+
+    const sourceRepo = options.sourceRepo ?? options.repo;
+    const meta = await fetchPullRequest(sourceRepo, options.pr!);
+    const files = await fetchPullRequestFiles(sourceRepo, options.pr!);
+    const raw = filesToUnifiedDiff(files);
+
+    const workspaceSha = checkoutSha(workspaceRoot);
+    const dirty = checkoutDirty(workspaceRoot);
+    const matches = workspaceSha === meta.headSha;
+    if (!matches && !options.allowRevisionMismatch) {
+      throw new Error(
+        `--workspace ${workspaceRoot} is at ${workspaceSha ?? "an unknown revision"}, ` +
+        `but ${sourceRepo}#${meta.number} has head ${meta.headSha}. ` +
+        "Assessing a pull request diff against a different checkout produces confident " +
+        "and wrong answers: check out the head, or pass --allow-revision-mismatch to " +
+        "proceed with the result labelled unverified.",
+      );
+    }
+    if (matches && dirty && !options.allowRevisionMismatch) {
+      throw new Error(
+        `--workspace ${workspaceRoot} is at the pull request head but has uncommitted ` +
+        "changes, so it is not that revision. Stash them, or pass " +
+        "--allow-revision-mismatch to proceed with the result labelled unverified.",
+      );
+    }
+
     return assess({
       repo: options.repo,
       diff: parseUnifiedDiff(raw),
-      source: options.diffFile,
+      sha: meta.headSha,
+      pr: meta.number,
+      source: `${sourceRepo}#${meta.number}@${meta.headSha.slice(0, 7)}`,
       registry,
       workspace,
+      baseWorkspace: baseline?.workspace,
+      revision: {
+        verified: matches && dirty === false,
+        workspaceSha,
+        expectedSha: meta.headSha,
+        baseSha: baseline?.sha,
+        ...(matches && dirty === false
+          ? {}
+          : { note: dirty ? "the checkout has uncommitted changes" : "the checkout is not at the pull request head" }),
+      },
     });
+  } finally {
+    baseline?.dispose();
   }
-
-  const sourceRepo = options.sourceRepo ?? options.repo;
-  const meta = await fetchPullRequest(sourceRepo, options.pr!);
-  const files = await fetchPullRequestFiles(sourceRepo, options.pr!);
-  const raw = filesToUnifiedDiff(files);
-  return assess({
-    repo: options.repo,
-    diff: parseUnifiedDiff(raw),
-    sha: meta.headSha,
-    pr: meta.number,
-    source: `${sourceRepo}#${meta.number}@${meta.headSha.slice(0, 7)}`,
-    registry,
-    workspace,
-  });
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {
@@ -171,8 +258,13 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     } else {
       process.stdout.write(renderMarkdown(assessment));
     }
-    const enforcement = options.enforcement ?? "error";
-    if (assessment.verdict === "fail" && enforcement !== "warning") {
+    // The trial is warning-only: a failed truth must not break anyone's loop
+    // until the registry has been validated against live pull requests.
+    //
+    // Even under `error`, only what this change introduced exits nonzero. A
+    // pre-existing ratchet is reported and stays exit 0, matching the Action.
+    const enforcement = options.enforcement ?? "warning";
+    if (assessment.outcome === "fact_failed" && enforcement !== "warning") {
       process.exitCode = 1;
     }
   } catch (error) {

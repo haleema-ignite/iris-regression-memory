@@ -6,26 +6,32 @@ statement: >
   In-memory-only seen-id sets and disabled persistence recreate duplicate Care
   comments after a pod restart.
 status: live
+proves: >
+  that this change did not disable watermark persistence or reintroduce in-memory-only dedup. It does not prove the durable floor exists — an engine that never had one passes.
 legacy_id: IRIS-BEH-0002
 executor:
   kind: pattern
   blocking: true
   emit: none
   mode: added_lines
+  # `skip persistState` and `in-memory only dedup` were removed: they are prose
+  # descriptions of the failure, not tokens that appear in TypeScript, so they
+  # could only ever match a hand-written fixture. Every real detection for this
+  # truth came from the line pattern or the signal group below.
   forbidden_signals:
     - POLL_WATERMARK_PERSISTENCE_ENABLED = false
     - "seenIds: new Set()"
-    - skip persistState
-    - in-memory only dedup
   forbidden_signal_groups:
     - [SEEN_ID_TTL_MS = 48 * 60 * 60 * 1000, "mergeSeenIds("]
   forbidden_line_patterns:
     - 'persistState\s*\(\s*account\s*,\s*[''"]comments[''"]\s*,\s*\{\s*seenIds\s*:[^,}]+\}\s*\)'
+    # config.ts declares the flag through Joi, so `= false` never appears there.
+    - 'POLL_WATERMARK_PERSISTENCE_ENABLED[^\n]{0,120}?default\(\s*false'
+  # commentsFloor, commentFloorMs and isBelowFloor were listed as required
+  # guards but exist nowhere in engines/instagram: they could never be detected
+  # as removed. The remaining token is real (config.ts) and is worth guarding.
   required_signals:
-    - commentsFloor
-    - SEEN_ID_TTL_MS
-    - commentFloorMs
-    - isBelowFloor
+    - POLL_WATERMARK_PERSISTENCE_ENABLED
 applies_to:
   repositories:
     - ignitetech-group/iris-sp-engines
@@ -53,4 +59,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 3

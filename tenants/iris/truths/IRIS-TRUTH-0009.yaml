@@ -10,10 +10,14 @@ executor:
   kind: decision
   blocking: true
   emit: none
-  leftover_tokens:
-    - SOCIALGATEWAY_FACEBOOK_APP_ID is required for Marketing Facebook
-    - SOCIALGATEWAY_FACEBOOK_APP_SECRET is required
-    - SOCIALGATEWAY_INSTAGRAM_APP_ID (or SOCIALGATEWAY_FACEBOOK_APP_ID fallback) is required for Marketing Instagram
+  # Was three exact English sentences. Only two of them matched anything, and any
+  # reword of the error message would have silently converted this ratchet into a
+  # pass — the failure mode a ratchet exists to prevent. Matching the credential
+  # name plus "is required" on the same line is reword-tolerant and still
+  # specific to a hard gate, so `idName: 'SOCIALGATEWAY_FACEBOOK_APP_ID'` in the
+  # oauth fallback chain does not match.
+  leftover_patterns:
+    - "SOCIALGATEWAY_(?:FACEBOOK|INSTAGRAM)_APP_(?:ID|SECRET)[^\\n'\"]*\\bis required\\b"
   files:
     - src/services/smm/content-sources.service.ts
     - src/services/oauth/facebook.oauth.ts
@@ -46,4 +50,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 2

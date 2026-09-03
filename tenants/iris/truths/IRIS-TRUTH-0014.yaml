@@ -5,15 +5,19 @@ statement: >
   Instagram Direct Message authors must be published with a resolved username
   or display name, not the raw numeric IGSID, when Graph profile lookup succeeds.
 status: live
+proves: >
+  that this change did not publish a raw IGSID as a display name and did not delete the messaging-profile lookup. It does not prove authors are resolved.
 legacy_id: IRIS-BEH-0005
 executor:
   kind: pattern
   blocking: true
   emit: none
   mode: added_lines
+  # `author.username = sender.id` and `skip getMessagingUserProfile` were prose
+  # and never matched code; the detection came from the required guard below.
+  # `displayName: igsid` is kept because it is the shape real code would take:
+  # transformer.ts assigns `displayName:` from a username today.
   forbidden_signals:
-    - author.username = sender.id
-    - skip getMessagingUserProfile
     - "displayName: igsid"
   required_signals:
     - getMessagingUserProfile
@@ -40,4 +44,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 3

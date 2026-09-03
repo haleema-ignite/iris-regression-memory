@@ -7,21 +7,29 @@ statement: >
   reintroduction check on added SQL, not a scan of pre-existing enumerations.
   Historical joins and includeDeleted lookups are allowed.
 status: live
+proves: >
+  that no enumeration this change added omits int_deleted. Pre-existing enumerations in the same file are deliberately not adjudicated.
 executor:
   kind: contract
   blocking: true
-  emit: semgrep
+  # Was `emit: semgrep`, which silently produced nothing: this truth is
+  # expressed as a query anchor plus a required token in the same statement, and
+  # there is no regex that captures "mentions X somewhere in this statement".
+  # Declaring an emit target that compiles to no rule made the manifest claim
+  # Semgrep coverage that did not exist.
+  emit: none
   languages:
     - typescript
     - javascript
     - java
   query_anchor: int_integration
   query_required: int_deleted
+  # `JOIN int_integration` was redundant: joins are excluded structurally by the
+  # executor before the allowance list is consulted.
   query_allow_if:
     - includeDeleted
     - withDeleted
     - historical
-    - JOIN int_integration
   mode: added_lines
 applies_to:
   repositories:
@@ -47,4 +55,4 @@ governance:
   owner: care-compatibility-maintainers
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 2
+  version: 4

@@ -41,28 +41,64 @@ export function parseUnifiedDiff(raw: string): ParsedDiff {
     }
 
     const addedLines: string[] = [];
+    const addedLineNumbers: number[] = [];
     const removedLines: string[] = [];
+    const removedLineNumbers: number[] = [];
     const contextLines: string[] = [];
     const allLines: string[] = [];
+    // Mode and rename markers only appear in the header, before the first
+    // hunk. Searching the whole chunk let a *content* line such as
+    // `+deleted file mode 100644` set the status to deleted, which then made
+    // the reconstructed after-state empty.
+    const hunkStart = chunk.search(/^@@/m);
+    const preamble = hunkStart === -1 ? chunk : chunk.slice(0, hunkStart);
     let status: DiffFile["status"] = "modified";
-    if (chunk.includes("new file mode")) status = "added";
-    if (chunk.includes("deleted file mode")) status = "deleted";
-    if (chunk.includes("rename from")) status = "renamed";
+    if (preamble.includes("new file mode")) status = "added";
+    if (preamble.includes("deleted file mode")) status = "deleted";
+    if (preamble.includes("rename from")) status = "renamed";
 
+    // Only body lines carry +/-/space markers. Classifying by prefix without
+    // tracking hunk boundaries loses any removed line whose own content starts
+    // with "--" (it looks like a `---` file header) and any added line starting
+    // with "++". SQL comments and diff-in-diff content hit this constantly.
+    let inHunk = false;
+    // 1-based line numbers in the new and old files, tracked from hunk headers
+    // so an added line can be located in the real after-state. Without that,
+    // deciding whether a line is a comment means inspecting the diff line on its
+    // own, which cannot see that it sits inside a `/* ... */` block.
+    let newLine = 0;
+    let oldLine = 0;
     for (const line of chunk.split("\n")) {
-      if (line.startsWith("+++") || line.startsWith("---") || line.startsWith("@@")) {
+      const hunk = line.match(/^@@+ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+      if (hunk) {
+        inHunk = true;
+        oldLine = Number(hunk[1]);
+        newLine = Number(hunk[2]);
         continue;
       }
+      if (line.startsWith("@@")) {
+        inHunk = true;
+        continue;
+      }
+      if (!inHunk) continue;
+      // "\ No newline at end of file" is metadata, not content.
+      if (line.startsWith("\\")) continue;
       if (line.startsWith("+")) {
         addedLines.push(line.slice(1));
+        addedLineNumbers.push(newLine);
         allLines.push(line.slice(1));
+        newLine += 1;
       } else if (line.startsWith("-")) {
         removedLines.push(line.slice(1));
+        removedLineNumbers.push(oldLine);
         allLines.push(line.slice(1));
+        oldLine += 1;
       } else if (line.startsWith(" ")) {
         const content = line.slice(1);
         contextLines.push(content);
         allLines.push(content);
+        newLine += 1;
+        oldLine += 1;
       }
     }
 
@@ -71,7 +107,9 @@ export function parseUnifiedDiff(raw: string): ParsedDiff {
       status,
       patch: `diff --git a/${path} b/${path}\n${chunk}`,
       addedLines,
+      addedLineNumbers,
       removedLines,
+      removedLineNumbers,
       contextLines,
       allLines,
       patchAvailable: !chunk.includes(PATCH_UNAVAILABLE_MARKER),

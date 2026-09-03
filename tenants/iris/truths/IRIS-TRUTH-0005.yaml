@@ -6,6 +6,8 @@ statement: >
   legacy Integration.Source and OAuthTokenProvider enums. Unknown platforms
   must use EXTERNAL/external plus a canonical network key.
 status: live
+proves: >
+  that this change did not add a modern platform identifier into an enum-backed Care column. It does not prove the columns are enum-safe overall; a pre-existing bad write elsewhere is invisible to it.
 legacy_id: IRIS-BEH-0007
 executor:
   kind: contract
@@ -18,10 +20,21 @@ executor:
     - "int_source = 'LINKEDIN'"
     - "int_source = 'BRANDMESSENGER'"
     - "oat_provider = 'tiktok'"
-  required_signals:
-    - "careSource = 'EXTERNAL'"
-    - resolveCareIntegrationIdentity
-  mode: both
+  # Reintroduction check, not a checkout ratchet.
+  #
+  # Under `both`, this truth failed on every pull request touching these paths,
+  # because src/services/admin/source-integrations.service.ts already carries
+  # `provider: 'applebc'` from the IRISNG-2931 Apple Messages legacy-parity work
+  # (documented in a comment at the call site). Whether that write is enum-safe
+  # is a live question for care-compatibility-maintainers, but charging it to
+  # every unrelated author is not how to ask it. All three historical detections
+  # for this truth — PR 574, and the 860/921 reintroductions — matched on added
+  # lines, so narrowing the mode loses no coverage.
+  mode: added_lines
+  # `careSource = 'EXTERNAL'` and `resolveCareIntegrationIdentity` were listed as
+  # required_signals but exist nowhere in iris-api: the convention was never
+  # adopted, so as guards they could never fire and only overstated coverage.
+  # The intent stays recorded under required_guards, where it belongs.
 applies_to:
   repositories:
     - ignitetech-group/iris-api
@@ -51,4 +64,4 @@ governance:
   owner: care-compatibility-maintainers
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 3

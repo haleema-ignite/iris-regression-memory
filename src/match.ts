@@ -41,9 +41,12 @@ export function changedPaths(diff: ParsedDiff): string[] {
 }
 
 function couplingHit(group: CouplingGroup, diff: ParsedDiff): boolean {
+  // Files whose patch GitHub withheld carry a placeholder marker rather than
+  // content; their lines are not evidence of anything.
+  const withPatch = diff.files.filter((file) => file.patchAvailable);
   const haystack = [
     ...diff.files.map((file) => file.path),
-    ...diff.files.flatMap((file) => file.allLines),
+    ...withPatch.flatMap((file) => file.allLines),
   ].join("\n");
   const pathHit = diff.files.some((file) =>
     matchesAnyGlob(stripSandboxPrefix(file.path), group.paths) || matchesAnyGlob(file.path, group.paths),

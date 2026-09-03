@@ -17,9 +17,13 @@ inputs:
     required: false
     default: ""
   enforcement:
-    description: warning produces a neutral check for findings; error produces a failing check and exit code.
+    description: >
+      warning produces a neutral check for findings; error produces a failing
+      check and exit code for truths this change introduced. Pre-existing
+      ratchets are always neutral. Defaults to warning: promotion to blocking is
+      per truth and requires live validation first.
     required: false
-    default: error
+    default: warning
   comment:
     description: Whether to create or update the sticky pull-request comment.
     required: false

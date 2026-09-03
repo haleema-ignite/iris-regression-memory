@@ -3,29 +3,34 @@ tenant: iris
 title: Keep Brand Messenger ingest idempotent on doc_src_id
 statement: >
   The same Brand Messenger platform message id must produce one logical
-  document. Retries and dual publishers must not insert a second row.
-status: live
+  document. Retries and dual publishers must not insert a second row. This
+  stays a gap until the check is pointed at the code that actually writes
+  doc_document.
+status: gap
 legacy_id: IRIS-BEH-0006
+# Demoted from live+blocking to gap, and the scope was wrong.
+#
+# The executor searched engines/brand-messenger/** for `doc_src_id`. That column
+# is a Care doc_document column written by iris-api and the lakehouse processor,
+# not by the engine: engines/brand-messenger/src contains api, config.ts,
+# index.ts, publisher and webhook, and the string `doc_src_id` appears nowhere in
+# it. The truth therefore could never fire against the real repository, and the
+# benchmark never exercised it. It passed only against
+# fixtures/sandbox/engines/brand-messenger/src/ingest.ts, a file that does not
+# exist in iris-sp-engines.
+#
+# To make this live: identify the writer of doc_document for Brand Messenger in
+# iris-api, scope the truth to that path, and name the identity column there.
 executor:
-  kind: pattern
-  blocking: true
+  kind: contract
+  blocking: false
   emit: none
-  mode: added_lines
-  forbidden_signals:
-    - new Date() as doc_src_id
-    - uuid as message id
-    - skip doc_src_id
-  required_signals:
-    - doc_src_id
 applies_to:
   repositories:
-    - ignitetech-group/iris-sp-engines
     - ignitetech-group/iris-api
+    - ignitetech-group/iris-sp-engines
   paths:
     - engines/brand-messenger/**
-  excluded_paths:
-    - "**/*.test.ts"
-    - "**/__tests__/**"
 evidence:
   - type: jira
     key: IRISNG-3729
@@ -38,8 +43,9 @@ failure_mechanism: >
   duplicate doc_document rows.
 required_guards:
   - Stable platform message id as doc_src_id
+  - >
+    Locate the iris-api writer of doc_document for Brand Messenger and rescope
+    this truth to it before making it live.
 governance:
   owner: social-platform-team
-  approved_at: 2026-09-01
-  review_after: 2027-03-01
-  version: 1
+  version: 2

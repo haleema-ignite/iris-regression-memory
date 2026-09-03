@@ -1,0 +1,34 @@
+# Truth Compiler — reintroduction rules. DIFF SCAN ONLY.
+#
+# Every rule here comes from a truth whose executor inspects added lines only.
+# Semgrep pattern-regex matches whole files, so running these without a
+# baseline reports pre-existing occurrences the truth deliberately does not
+# claim. Run them as:
+#
+#   semgrep --config semgrep-diff-scan.yml --baseline-commit <merge-base>
+#
+# Do not merge this file into a repository-wide Semgrep config.
+rules:
+  - id: truth-compiler.IRIS-TRUTH-0019
+    message: "IRIS-TRUTH-0019: Queries must not add LIKE '%…%' against int_meta or
+      other large Care tables. Leading wildcards cannot use indexes. This is a
+      reintroduction check on added lines, not a leftover ratchet for
+      pre-existing queries in files the PR touched."
+    languages:
+      - typescript
+      - javascript
+      - java
+    severity: ERROR
+    metadata:
+      truth_id: IRIS-TRUTH-0019
+      executor: semgrep
+      source: truth-compiler
+      scope: added_lines
+      requires_diff_scan: true
+    paths:
+      include:
+        - src/**/*.ts
+      exclude:
+        - "**/*.test.ts"
+        - "**/__tests__/**"
+    pattern-regex: (\b(?:int_meta|use_meta|his_metadata|doc_metadata|ckv_key|ckv_domain)\b[^\n]{0,200}?LIKE\s+['"]%|\bFROM\s+(?:int_integration|doc_document|his_history)\b[^\n]{0,200}?LIKE\s+['"]%)

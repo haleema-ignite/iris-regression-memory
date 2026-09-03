@@ -1,3 +1,7 @@
+# Truth Compiler — whole-checkout rules.
+#
+# These come from truths that intentionally ratchet against the full
+# checkout, so a plain repository-wide Semgrep run is correct for them.
 rules:
   - id: truth-compiler.IRIS-TRUTH-0006
     message: "IRIS-TRUTH-0006: Values written into Care int_meta must be
@@ -12,6 +16,7 @@ rules:
       truth_id: IRIS-TRUTH-0006
       executor: contract
       source: truth-compiler
+      scope: workspace
     paths:
       include:
         - src/services/**/*provisioner*
@@ -24,24 +29,3 @@ rules:
     pattern-regex: "(apiParams\\s*:\\s*\\{|apiParams\\s*=\\s*\\{|int_meta\\.apiPara\
       ms\\s*=\\s*\\{|intMetaOverride\\.apiParams\\s*=\\s*\\{|int_meta: \\{
       apiParams)"
-  - id: truth-compiler.IRIS-TRUTH-0019
-    message: "IRIS-TRUTH-0019: Queries must not add LIKE '%…%' against int_meta or
-      other large Care tables. Leading wildcards cannot use indexes. This is a
-      reintroduction check on added lines, not a leftover ratchet for
-      pre-existing queries in files the PR touched."
-    languages:
-      - typescript
-      - javascript
-      - java
-    severity: ERROR
-    metadata:
-      truth_id: IRIS-TRUTH-0019
-      executor: semgrep
-      source: truth-compiler
-    paths:
-      include:
-        - src/**/*.ts
-      exclude:
-        - "**/*.test.ts"
-        - "**/__tests__/**"
-    pattern-regex: (LIKE\s+['"]%|int_meta LIKE '%)

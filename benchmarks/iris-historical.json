@@ -1,9 +1,9 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "IRIS local historical and frozen validation PR benchmark",
   "contractRelease": "truth-compiler-trial",
-  "expectationsUpdatedAt": "2026-09-01",
-  "expectationsNote": "Expected labels follow Truth Compiler leftover (IRIS-TRUTH-0009) and reintroduction (IRIS-TRUTH-0019) semantics, not the pre-compiler BEH-only pass/inconclusive labels. iris-api cases cannot abstain while 0009 is live.",
+  "expectationsUpdatedAt": "2026-09-02",
+  "expectationsNote": "Expectations are per truth, not just per case. `expectedVerdict` is the whole-registry outcome; `mustFailTruths`, `mustPassTruths` and `mustNotFailTruths` say which truths must do what. A single `contract` field could not express the 860/921 cases, where the case's own truth is supposed to PASS (it is the fix) while the overall verdict fails on the unrelated IRIS-TRUTH-0009 leftover \u2014 which made attributed recall look worse than it is.",
   "validationSetFrozenAt": "2026-08-30T00:00:00+05:00",
   "cases": [
     {
@@ -13,10 +13,15 @@
       "localDirectory": "iris-sp-engines",
       "pr": 62,
       "incident": "IRISNG-4040",
-      "contract": "IRIS-BEH-0004",
       "base": "e619e8e65d431cc3e02dec975ec3f1b341751bdd",
       "head": "f7186cd0bea1c3238c8c3e0131d6c445feb12b85",
-      "expected": "fail"
+      "mustFailTruths": [
+        "IRIS-TRUTH-0013"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0004",
+      "expectedVerdict": "fail"
     },
     {
       "id": "culprit-watermark-engine-222",
@@ -25,10 +30,15 @@
       "localDirectory": "iris-sp-engines",
       "pr": 222,
       "incident": "IRISNG-3940",
-      "contract": "IRIS-BEH-0002",
       "base": "d9955b7ae666c1969aa5f3d26bd41ed460958db4",
       "head": "b6550842600c974e690d0a868ffe1d9bfc9d8f3b",
-      "expected": "fail"
+      "mustFailTruths": [
+        "IRIS-TRUTH-0007"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0002",
+      "expectedVerdict": "fail"
     },
     {
       "id": "culprit-watermark-api-695",
@@ -37,10 +47,15 @@
       "localDirectory": "iris-api",
       "pr": 695,
       "incident": "IRISNG-3940",
-      "contract": "IRIS-BEH-0002",
       "base": "6b6284161a9fc28f78dafed4af113092f2cf1bc2",
       "head": "05a2db00567d9ba44ec994e075e4fd4e98b0a8b3",
-      "expected": "fail"
+      "mustFailTruths": [
+        "IRIS-TRUTH-0007"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0002",
+      "expectedVerdict": "fail"
     },
     {
       "id": "culprit-legacy-care-574",
@@ -49,10 +64,15 @@
       "localDirectory": "iris-api",
       "pr": 574,
       "incident": "IRISNG-3518",
-      "contract": "IRIS-BEH-0007",
       "base": "8bd88668b7b003ec007c9d1ffbf684bc8754925b",
       "head": "5924001d466d24825c0fe1683776140c79585528",
-      "expected": "fail"
+      "mustFailTruths": [
+        "IRIS-TRUTH-0005"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0007",
+      "expectedVerdict": "fail"
     },
     {
       "id": "fix-meta-signatures-389",
@@ -61,10 +81,15 @@
       "localDirectory": "iris-sp-engines",
       "pr": 389,
       "incident": "IRISNG-3905",
-      "contract": "IRIS-BEH-0003",
       "base": "b5224a5571d532b2caf46b36f4fd55921d28eebf",
       "head": "dafd0a55772b8bfd9bc16a6fa0f7f41c0e30b01f",
-      "expected": "pass"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0011"
+      ],
+      "legacyContract": "IRIS-BEH-0003",
+      "expectedVerdict": "pass"
     },
     {
       "id": "fix-watermark-402",
@@ -73,10 +98,15 @@
       "localDirectory": "iris-sp-engines",
       "pr": 402,
       "incident": "IRISNG-3940",
-      "contract": "IRIS-BEH-0002",
       "base": "e5f56966efb69fcc3220726de8daa87426f5c2a4",
       "head": "be00a207bd166cc9b688df5e743cf09db05f3377",
-      "expected": "pass"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0007"
+      ],
+      "legacyContract": "IRIS-BEH-0002",
+      "expectedVerdict": "pass"
     },
     {
       "id": "control-x-streaming-403",
@@ -85,10 +115,13 @@
       "localDirectory": "iris-sp-engines",
       "pr": 403,
       "incident": "unencoded",
-      "contract": null,
       "base": "e5f56966efb69fcc3220726de8daa87426f5c2a4",
       "head": "cd1e2ef7a871c16cee5f39ac364c9090d3b0f1c8",
-      "expected": "inconclusive"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": null,
+      "expectedVerdict": "inconclusive"
     },
     {
       "id": "fix-instagram-author-408",
@@ -97,10 +130,15 @@
       "localDirectory": "iris-sp-engines",
       "pr": 408,
       "incident": "IRISNG-4026",
-      "contract": "IRIS-BEH-0005",
       "base": "8e4d67864b7914867048ba2a309160264b38d5dd",
       "head": "3b39c17cabad613db10b11632b31c79d6fb11bb8",
-      "expected": "pass"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0014"
+      ],
+      "legacyContract": "IRIS-BEH-0005",
+      "expectedVerdict": "pass"
     },
     {
       "id": "fix-facebook-auth-413",
@@ -109,10 +147,15 @@
       "localDirectory": "iris-sp-engines",
       "pr": 413,
       "incident": "IRISNG-4040",
-      "contract": "IRIS-BEH-0004",
       "base": "628b0607d1430148f6545873a353625fb33294cc",
       "head": "2ffcd05773a48d3c0db89f32d94d2037d9c38233",
-      "expected": "pass"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0013"
+      ],
+      "legacyContract": "IRIS-BEH-0004",
+      "expectedVerdict": "pass"
     },
     {
       "id": "fix-tiktok-legacy-860",
@@ -121,11 +164,18 @@
       "localDirectory": "iris-api",
       "pr": 860,
       "incident": "IRISNG-3518",
-      "contract": "IRIS-BEH-0007",
       "base": "17c3d468b4323cf394e814a61d130820b4f810b6",
       "head": "36e72c1d2437125a6a6dad26b2cfc7172c65c73d",
-      "expected": "fail",
-      "note": "IRIS-TRUTH-0009 leftover SocialGateway gate is still in this API tree. The TikTok transaction fix is not a 0009 cleanup."
+      "note": "IRIS-TRUTH-0009 leftover SocialGateway gate is still in this API tree. The TikTok transaction fix is not a 0009 cleanup. This is the FIX for its contract, so that truth must PASS; the overall failure is the unrelated IRIS-TRUTH-0009 leftover still in tree. Expressed per truth so it no longer counts against attributed recall.",
+      "mustFailTruths": [
+        "IRIS-TRUTH-0009"
+      ],
+      "mustPassTruths": [
+        "IRIS-TRUTH-0005"
+      ],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0007",
+      "expectedVerdict": "fail"
     },
     {
       "id": "fix-listener-legacy-921",
@@ -134,11 +184,18 @@
       "localDirectory": "iris-api",
       "pr": 921,
       "incident": "IRISNG-3599",
-      "contract": "IRIS-BEH-0007",
       "base": "bd858189c3a5b993dfe24e30cd02c208d2ac19fc",
       "head": "0ea15c6a34a9109165c3c9f962b340d6168a4679",
-      "expected": "fail",
-      "note": "IRIS-TRUTH-0009 leftover SocialGateway gate is still in this API tree. The IRISNG-3599 review fix is not a 0009 cleanup."
+      "note": "IRIS-TRUTH-0009 leftover SocialGateway gate is still in this API tree. The IRISNG-3599 review fix is not a 0009 cleanup. This is the FIX for its contract, so that truth must PASS; the overall failure is the unrelated IRIS-TRUTH-0009 leftover still in tree. Expressed per truth so it no longer counts against attributed recall.",
+      "mustFailTruths": [
+        "IRIS-TRUTH-0009"
+      ],
+      "mustPassTruths": [
+        "IRIS-TRUTH-0005"
+      ],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0007",
+      "expectedVerdict": "fail"
     },
     {
       "id": "control-meta-oauth-1014",
@@ -147,24 +204,34 @@
       "localDirectory": "iris-api",
       "pr": 1014,
       "incident": "IRISNG-3905",
-      "contract": "IRIS-TRUTH-0009",
       "base": "6d88273e9dc15029358d8fea09ebe7a6ec0852f3",
       "head": "7ba2c1c645c9b460626efa7ae79d36f8e7245cfb",
-      "expected": "pass",
-      "note": "Removes the SocialGateway leftover. 0009 is selected and holds."
+      "note": "Removes the SocialGateway leftover. 0009 is selected and holds.",
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0009"
+      ],
+      "legacyContract": "IRIS-TRUTH-0009",
+      "expectedVerdict": "pass"
     },
     {
       "id": "control-care-history-1102",
-      "category": "encoded_regression",
+      "category": "modified_preexisting_violation",
       "repository": "ignitetech-group/iris-api",
       "localDirectory": "iris-api",
       "pr": 1102,
       "incident": "CARESMM-24342",
-      "contract": "IRIS-TRUTH-0019",
       "base": "15d6c563d43154bf02929cbb6261c45b11e1adf3",
       "head": "3cb36154996792a83339888a672e015df49a35e8",
-      "expected": "fail",
-      "note": "Newly adds a leading-wildcard LIKE. 0019 is a reintroduction check, not a leftover scan of pre-existing queries."
+      "note": "Reclassified 2026-09-02 after review. The label said this PR newly adds a leading-wildcard LIKE. It does not: the only LIKE change in the diff adds a table alias to a wildcard that already existed (`his_metadata LIKE '%\"reason\":\"STOP_KEYWORD\"%'` -> `h_opt.his_metadata LIKE ...`). The old fail came from treating a modified line as an added line, which is the false positive that fired on every reformat of the 78 pre-existing wildcards in iris-api. IRIS-TRUTH-0019's positive detection is still validated on real history by culprit-legacy-care-574, and by the increases-match-count unit test.",
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0019"
+      ],
+      "legacyContract": "IRIS-TRUTH-0019",
+      "expectedVerdict": "pass"
     },
     {
       "id": "fix-facebook-auth-api-1112",
@@ -173,10 +240,15 @@
       "localDirectory": "iris-api",
       "pr": 1112,
       "incident": "IRISNG-4040",
-      "contract": "IRIS-BEH-0004",
       "base": "6e1cfca3df07c075db44fe261d71a7f63662c340",
       "head": "ac2688f9d1d146d30c0daaabafa279ffcbf7ff7e",
-      "expected": "pass"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0013"
+      ],
+      "legacyContract": "IRIS-BEH-0004",
+      "expectedVerdict": "pass"
     },
     {
       "id": "reintroduce-meta-signatures-389",
@@ -185,11 +257,16 @@
       "localDirectory": "iris-sp-engines",
       "pr": 389,
       "incident": "IRISNG-3905",
-      "contract": "IRIS-BEH-0003",
       "base": "b5224a5571d532b2caf46b36f4fd55921d28eebf",
       "head": "dafd0a55772b8bfd9bc16a6fa0f7f41c0e30b01f",
       "reverse": true,
-      "expected": "fail"
+      "mustFailTruths": [
+        "IRIS-TRUTH-0011"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0003",
+      "expectedVerdict": "fail"
     },
     {
       "id": "reintroduce-watermark-402",
@@ -198,11 +275,16 @@
       "localDirectory": "iris-sp-engines",
       "pr": 402,
       "incident": "IRISNG-3940",
-      "contract": "IRIS-BEH-0002",
       "base": "e5f56966efb69fcc3220726de8daa87426f5c2a4",
       "head": "be00a207bd166cc9b688df5e743cf09db05f3377",
       "reverse": true,
-      "expected": "fail"
+      "mustFailTruths": [
+        "IRIS-TRUTH-0007"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0002",
+      "expectedVerdict": "fail"
     },
     {
       "id": "reintroduce-instagram-author-408",
@@ -211,11 +293,16 @@
       "localDirectory": "iris-sp-engines",
       "pr": 408,
       "incident": "IRISNG-4026",
-      "contract": "IRIS-BEH-0005",
       "base": "8e4d67864b7914867048ba2a309160264b38d5dd",
       "head": "3b39c17cabad613db10b11632b31c79d6fb11bb8",
       "reverse": true,
-      "expected": "fail"
+      "mustFailTruths": [
+        "IRIS-TRUTH-0014"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0005",
+      "expectedVerdict": "fail"
     },
     {
       "id": "reintroduce-facebook-auth-413",
@@ -224,11 +311,16 @@
       "localDirectory": "iris-sp-engines",
       "pr": 413,
       "incident": "IRISNG-4040",
-      "contract": "IRIS-BEH-0004",
       "base": "628b0607d1430148f6545873a353625fb33294cc",
       "head": "2ffcd05773a48d3c0db89f32d94d2037d9c38233",
       "reverse": true,
-      "expected": "fail"
+      "mustFailTruths": [
+        "IRIS-TRUTH-0013"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0004",
+      "expectedVerdict": "fail"
     },
     {
       "id": "reintroduce-tiktok-legacy-860",
@@ -237,11 +329,16 @@
       "localDirectory": "iris-api",
       "pr": 860,
       "incident": "IRISNG-3518",
-      "contract": "IRIS-BEH-0007",
       "base": "17c3d468b4323cf394e814a61d130820b4f810b6",
       "head": "36e72c1d2437125a6a6dad26b2cfc7172c65c73d",
       "reverse": true,
-      "expected": "fail"
+      "mustFailTruths": [
+        "IRIS-TRUTH-0005"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0007",
+      "expectedVerdict": "fail"
     },
     {
       "id": "reintroduce-listener-legacy-921",
@@ -250,11 +347,16 @@
       "localDirectory": "iris-api",
       "pr": 921,
       "incident": "IRISNG-3599",
-      "contract": "IRIS-BEH-0007",
       "base": "bd858189c3a5b993dfe24e30cd02c208d2ac19fc",
       "head": "0ea15c6a34a9109165c3c9f962b340d6168a4679",
       "reverse": true,
-      "expected": "fail"
+      "mustFailTruths": [
+        "IRIS-TRUTH-0005"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-BEH-0007",
+      "expectedVerdict": "fail"
     },
     {
       "id": "validation-instagram-rate-limit-291",
@@ -263,10 +365,15 @@
       "localDirectory": "iris-sp-engines",
       "pr": 291,
       "incident": "unrelated",
-      "contract": "IRIS-BEH-0002",
       "base": "bbf0fef8b25b07633d1f604ef6e12291e0329010",
       "head": "120aff4629c9e88dc5deb21965cb6f38cac83c38",
-      "expected": "pass"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0007"
+      ],
+      "legacyContract": "IRIS-BEH-0002",
+      "expectedVerdict": "pass"
     },
     {
       "id": "validation-meta-auth-classification-340",
@@ -275,10 +382,15 @@
       "localDirectory": "iris-sp-engines",
       "pr": 340,
       "incident": "unrelated",
-      "contract": "IRIS-BEH-0004",
       "base": "6220e964594efa361ccb2803fed70ca8dbd9ea4d",
       "head": "4257bfbdcc95a3c6033bf4cee5880c8ea04a3646",
-      "expected": "pass"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0013"
+      ],
+      "legacyContract": "IRIS-BEH-0004",
+      "expectedVerdict": "pass"
     },
     {
       "id": "validation-meta-bootstrap-361",
@@ -287,10 +399,15 @@
       "localDirectory": "iris-sp-engines",
       "pr": 361,
       "incident": "unrelated",
-      "contract": "IRIS-BEH-0004",
       "base": "9636ae71b5e8bb33183e464dc2739ddff4d00e4d",
       "head": "c073d7bc568fb92f8cf12500fb48264af938fd90",
-      "expected": "pass"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0013"
+      ],
+      "legacyContract": "IRIS-BEH-0004",
+      "expectedVerdict": "pass"
     },
     {
       "id": "validation-pinterest-dependencies-390",
@@ -299,10 +416,13 @@
       "localDirectory": "iris-sp-engines",
       "pr": 390,
       "incident": "unencoded",
-      "contract": null,
       "base": "a9177169a895421bfc6d5fc6ce4ff41acb6fb7b9",
       "head": "1128d8c0e5c68bb7c21b45f64094bb338bd0b2f9",
-      "expected": "inconclusive"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": null,
+      "expectedVerdict": "inconclusive"
     },
     {
       "id": "validation-rss-transformer-365",
@@ -311,10 +431,13 @@
       "localDirectory": "iris-sp-engines",
       "pr": 365,
       "incident": "unencoded",
-      "contract": null,
       "base": "5155322437f4dc5358c7129e0b904798e928fed8",
       "head": "6d97c283d9f04692a4106f186d5919efa50b9dbb",
-      "expected": "inconclusive"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": null,
+      "expectedVerdict": "inconclusive"
     },
     {
       "id": "validation-youtube-runtime-334",
@@ -323,10 +446,13 @@
       "localDirectory": "iris-sp-engines",
       "pr": 334,
       "incident": "unencoded",
-      "contract": null,
       "base": "08d397e79422e9000e914caad9880c58e9e700f0",
       "head": "8fe8441b9b734415c8e232e4a4ad90b400fa8455",
-      "expected": "inconclusive"
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": null,
+      "expectedVerdict": "inconclusive"
     },
     {
       "id": "validation-close-reasons-1148",
@@ -335,11 +461,14 @@
       "localDirectory": "iris-api",
       "pr": 1148,
       "incident": "unencoded",
-      "contract": null,
       "base": "b2930fc867a1b23a97fa1b5396d4d950d2ef7c86",
       "head": "2c382cfb1293414975155c9b844f485a7e41a973",
-      "expected": "pass",
-      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed.",
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": null,
+      "expectedVerdict": "pass"
     },
     {
       "id": "validation-internal-notes-1146",
@@ -348,11 +477,14 @@
       "localDirectory": "iris-api",
       "pr": 1146,
       "incident": "unencoded",
-      "contract": null,
       "base": "b2930fc867a1b23a97fa1b5396d4d950d2ef7c86",
       "head": "574cf177e5a72216b3e3a25ed13ca3ff719e90cb",
-      "expected": "pass",
-      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed.",
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": null,
+      "expectedVerdict": "pass"
     },
     {
       "id": "validation-push-next-1081",
@@ -361,11 +493,14 @@
       "localDirectory": "iris-api",
       "pr": 1081,
       "incident": "unencoded",
-      "contract": null,
       "base": "e303a7347b3c7bb047b1ab46f45064895526bbb6",
       "head": "a04824130989ac3ef66010e08b3a545b2e4d452e",
-      "expected": "pass",
-      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed.",
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": null,
+      "expectedVerdict": "pass"
     },
     {
       "id": "validation-profile-notes-1098",
@@ -374,11 +509,14 @@
       "localDirectory": "iris-api",
       "pr": 1098,
       "incident": "unencoded",
-      "contract": null,
       "base": "a94417491bede9e6e639854955e97fab8fd9190c",
       "head": "822ea1c99dacf9cd9f7cb7f772f4aab42fbcdd56",
-      "expected": "pass",
-      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed.",
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": null,
+      "expectedVerdict": "pass"
     },
     {
       "id": "validation-instagram-publisher-1110",
@@ -387,11 +525,14 @@
       "localDirectory": "iris-api",
       "pr": 1110,
       "incident": "unencoded",
-      "contract": null,
       "base": "6a502df7f8e878db525938b79b6303c826f4c198",
       "head": "aace9a3c185c4ef02d1a978137efc9fe5b756f59",
-      "expected": "pass",
-      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed.",
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": null,
+      "expectedVerdict": "pass"
     },
     {
       "id": "validation-dashboard-indexes-1152",
@@ -400,11 +541,55 @@
       "localDirectory": "iris-api",
       "pr": 1152,
       "incident": "unencoded",
-      "contract": null,
       "base": "0a9a530bd41a49db233bfa51796ab23d5a025b71",
       "head": "8c5b4fcc3fc004f53e242a47862eef6469b25135",
-      "expected": "pass",
-      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed."
+      "note": "No encoded regression in this diff. IRIS-TRUTH-0009 is selected on iris-api and holds after the SocialGateway leftover was removed.",
+      "mustFailTruths": [],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": null,
+      "expectedVerdict": "pass"
+    },
+    {
+      "id": "culprit-generate-campaign-removed",
+      "category": "historical_culprit",
+      "repository": "ignitetech-group/iris-web",
+      "localDirectory": "iris-web",
+      "pr": 0,
+      "incident": "IRISNG-1972",
+      "base": "30db955760a7d9af9c2698aa401a3bf69d6ad277",
+      "head": "040a666835b1fa3dbbf451aebfcf5e974bd8a430",
+      "mustFailTruths": [
+        "IRIS-TRUTH-0001",
+        "IRIS-TRUTH-0002"
+      ],
+      "mustPassTruths": [],
+      "mustNotFailTruths": [],
+      "legacyContract": "IRIS-TRUTH-0001",
+      "expectedVerdict": "fail",
+      "note": "The real removal of the Generate Campaign button and wizard from the calendar. Added 2026-09-02: the flagship product family had no real-history coverage at all, which is exactly where a false negative was found. pr is 0 because this is a commit pair, not a pull request."
+    },
+    {
+      "id": "fix-generate-campaign-restored",
+      "category": "historical_fix",
+      "repository": "ignitetech-group/iris-web",
+      "localDirectory": "iris-web",
+      "pr": 0,
+      "incident": "IRISNG-1972",
+      "base": "e1c6098d66d942cc563d66cf652d52993ac125a1",
+      "head": "ae0c40614b00c72619acb12666bd77d4550fc495",
+      "mustFailTruths": [],
+      "mustPassTruths": [
+        "IRIS-TRUTH-0001",
+        "IRIS-TRUTH-0002"
+      ],
+      "mustNotFailTruths": [
+        "IRIS-TRUTH-0001",
+        "IRIS-TRUTH-0002"
+      ],
+      "legacyContract": "IRIS-TRUTH-0001",
+      "expectedVerdict": "fail",
+      "note": "The revert that restored the control. 0001 and 0002 must pass here; the overall verdict is still fail because IRIS-TRUTH-0003 \u2014 the promotion grep \u2014 is a standing leftover on iris-web. Expressed per truth so that does not muddy attribution."
     }
   ]
 }

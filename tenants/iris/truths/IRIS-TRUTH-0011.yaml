@@ -6,15 +6,21 @@ statement: >
   receiving page or account must verify. Rotation must not drop events signed
   by the previous app while both secrets are live.
 status: live
+proves: >
+  that this change did not delete the per-page secret candidates or the HMAC verifier, and did not HMAC a re-serialised body. It does not prove the guards exist: a branch that never had them passes.
 legacy_id: IRIS-BEH-0003
 executor:
   kind: pattern
   blocking: true
   emit: none
   mode: added_lines
+  # `verify against CONFIG only` and `ignore page appSecret` were prose and never
+  # matched code. The remaining signal is a real anti-pattern: re-serialising the
+  # parsed body produces different bytes than the raw payload the HMAC covers.
+  # It appears today only inside a comment in
+  # engines/instagram/src/webhook/webhook.component.ts explaining why not to do
+  # it, which comment-stripped matching now correctly ignores.
   forbidden_signals:
-    - verify against CONFIG only
-    - ignore page appSecret
     - JSON.stringify(parsedBody)
   required_signals:
     - getWebhookSecretCandidates
@@ -45,4 +51,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 3

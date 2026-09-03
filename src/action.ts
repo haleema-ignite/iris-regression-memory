@@ -47,7 +47,7 @@ async function main(): Promise<void> {
   const enforcementValue = process.env.INPUT_ENFORCEMENT?.trim() ||
     process.env.TRUTH_COMPILER_ENFORCEMENT?.trim() ||
     process.env.REGRESSION_MEMORY_ENFORCEMENT?.trim() ||
-    "error";
+    "warning";
   if (enforcementValue !== "warning" && enforcementValue !== "error") {
     throw new Error("enforcement must be warning or error");
   }
@@ -72,7 +72,12 @@ async function main(): Promise<void> {
     await upsertStickyComment(sourceRepo, pr, body, "<!-- truth-compiler -->");
   }
 
-  const conclusion = checkConclusion(assessment.verdict, enforcement, assessment.coverage.status);
+  const conclusion = checkConclusion(
+    assessment.verdict,
+    enforcement,
+    assessment.coverage.status,
+    assessment.outcome,
+  );
   await createCheckRun({
     repo: sourceRepo,
     headSha: sha,
@@ -83,7 +88,9 @@ async function main(): Promise<void> {
   });
 
   process.stdout.write(body);
-  if (assessment.verdict === "fail" && enforcement === "error") {
+  // Only what this change introduced can fail the run. A pre-existing ratchet is
+  // reported, never charged to this author.
+  if (assessment.outcome === "fact_failed" && enforcement === "error") {
     process.exitCode = 1;
   }
 }

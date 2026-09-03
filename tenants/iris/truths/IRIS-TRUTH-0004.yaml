@@ -5,6 +5,9 @@ statement: >
   iris-e2e publisherCoverage must keep a P14 Generate Campaign presence check
   so the compiler has an executable product probe to bind onto a blocking path.
 status: live
+proves: >
+  that the spec file still names a P14 Generate Campaign case. It does not run
+  the case; a compiler pass here is not a green e2e run.
 executor:
   kind: product
   blocking: true
@@ -33,4 +36,4 @@ governance:
   owner: publisher-maintainers
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 2

@@ -1,18 +1,32 @@
 id: IRIS-TRUTH-0003
 tenant: iris
-title: QA promotion must not smoke only IRISNG-1884 and IRISNG-1885
+title: QA promotion must smoke the Generate Campaign surface
 statement: >
-  Manual QA promotion for iris-web must not grep only IRISNG-1884 and
-  IRISNG-1885. That path can announce a build while Generate Campaign is gone.
+  Manual QA promotion for iris-web must select an e2e case that covers Generate
+  Campaign. A promotion grep pinned to unrelated ticket keys can announce a
+  build while Generate Campaign is gone.
 status: live
+proves: >
+  that the promotion grep names the publisher coverage case or the control
+  itself. It does not run the case.
 executor:
   kind: product
   blocking: true
   emit: none
   files:
     - .github/workflows/qa001-deploy.yaml
-  must_not_contain:
-    - "IRISNG-188[45]"
+  # Asserted positively on purpose. Forbidding the one known-bad spelling
+  # (`IRISNG-188[45]`) is bypassed by rewriting it as `IRISNG-1884|IRISNG-1885`,
+  # which leaves the promotion just as blind. Requiring the grep to name the
+  # covering case cannot be satisfied without actually covering it.
+  #
+  # Anchored to the `test_grep:` value rather than to the file, because
+  # `must_contain_any` over the whole workflow was satisfiable by the words
+  # "Generate Campaign" appearing in an unrelated job name, a comment, or a step
+  # description — none of which selects the e2e case. The pattern requires the
+  # token on the same line as the key that actually drives selection.
+  must_contain_patterns:
+    - "test_grep:[^\\n]*(?:P14|publisherCoverage|Generate Campaign)"
 applies_to:
   repositories:
     - ignitetech-group/iris-web
@@ -34,4 +48,4 @@ governance:
   owner: publisher-maintainers
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 3

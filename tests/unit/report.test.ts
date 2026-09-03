@@ -28,6 +28,68 @@ describe("report adapters", () => {
     assert.equal(checkConclusion("pass", "warning", "full"), "success");
   });
 
+  it("never fails a check for a pre-existing ratchet, even in error mode", () => {
+    // Charging an author for a leftover they did not create is how a ratchet
+    // becomes noise the team learns to ignore.
+    assert.equal(
+      checkConclusion("fail", "error", "full", "preexisting_fact_failed"),
+      "neutral",
+    );
+    assert.equal(
+      checkConclusion("fail", "error", "full", "fact_failed"),
+      "failure",
+    );
+  });
+
+  it("reports introduced and pre-existing failures under separate headings", () => {
+    const assessment = assess({
+      repo: "ignitetech-group/iris-web",
+      diff: parseUnifiedDiff([
+        "diff --git a/src/features/publishing/calendar/components/PublisherCalendarHeader.tsx b/src/features/publishing/calendar/components/PublisherCalendarHeader.tsx",
+        "--- a/src/features/publishing/calendar/components/PublisherCalendarHeader.tsx",
+        "+++ b/src/features/publishing/calendar/components/PublisherCalendarHeader.tsx",
+        "@@ -1,3 +1,1 @@",
+        "-      <button onClick={() => onGenerateCampaign?.()}>Generate Campaign</button>",
+        "+      <button>Filters</button>",
+      ].join("\n")),
+      source: "mixed",
+      registry,
+      workspace: {
+        root: "/memory",
+        read: (path: string) => ({
+          // The label survives only in a comment, and the promotion grep is the
+          // standing 0003 ratchet.
+          "src/features/publishing/calendar/components/PublisherCalendarHeader.tsx":
+            "{/* Generate Campaign Button */}\n<button onClick={() => onGenerateCampaign?.()}>Filters</button>",
+          "src/features/publishing/calendar/PublisherCalendarPage.tsx":
+            "import { GenerateCampaignPanel } from './x';\n<PublisherCalendarHeader onGenerateCampaign={h} />\n<GenerateCampaignPanel />",
+          ".github/workflows/qa001-deploy.yaml": "test_grep: 'IRISNG-188[45]'",
+        })[path],
+        list: () => [],
+      },
+      // At base the header still rendered the label and the promotion grep was
+      // already blind, so the two failures land in different sections.
+      baseWorkspace: {
+        root: "/memory-base",
+        read: (path: string) => ({
+          "src/features/publishing/calendar/components/PublisherCalendarHeader.tsx":
+            "<button onClick={() => onGenerateCampaign?.()}>Generate Campaign</button>",
+          "src/features/publishing/calendar/PublisherCalendarPage.tsx":
+            "import { GenerateCampaignPanel } from './x';\n<PublisherCalendarHeader onGenerateCampaign={h} />\n<GenerateCampaignPanel />",
+          ".github/workflows/qa001-deploy.yaml": "test_grep: 'IRISNG-188[45]'",
+        })[path],
+        list: () => [],
+      },
+    });
+    const markdown = renderMarkdown(assessment);
+    assert.match(markdown, /FACT FAILED — introduced by this change/);
+    assert.match(markdown, /## Introduced by this change/);
+    assert.match(markdown, /## Pre-existing in this checkout/);
+    assert.match(markdown, /not\s+this change's regressions/);
+    // The narrower claim a product grep actually supports must be shown.
+    assert.match(markdown, /Proves only:/);
+  });
+
   it("renders fact ids instead of a general review essay", () => {
     const assessment = replay("meta-signature-fix-forward.diff");
     const markdown = renderMarkdown(assessment);

@@ -5,16 +5,18 @@ statement: >
   An invalid token on one Facebook page must not stop polling or mark auth
   degraded for other healthy pages on the same engine.
 status: live
+proves: >
+  that this change did not reintroduce the engine-wide DEGRADED_AUTH bootstrap or delete per-page authState. It does not prove failures are isolated per page.
 legacy_id: IRIS-BEH-0004
 executor:
   kind: pattern
   blocking: true
   emit: none
   mode: added_lines
-  forbidden_signals:
-    - markAuthDegraded on any page 190
-    - skip all pages after one 190
-    - engine-wide auth failure
+  # The three former forbidden_signals were prose and never matched code. The
+  # signal group below is the real detector and carried both historical
+  # detections: all three of its members exist in engines/facebook/src/index.ts,
+  # the third as the DEGRADED_AUTH bootstrap log message.
   forbidden_signal_groups:
     - ["if (authOk)", componentManager.markAuthDegraded, components not started]
   required_signals:
@@ -43,4 +45,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 3

@@ -5,6 +5,11 @@ statement: >
   The publisher calendar header must render a visible Generate Campaign control.
   Calendar, filter, search, and assets refactors must not drop it.
 status: live
+proves: >
+  that the label is still rendered as JSX text and the handler prop is still
+  referenced in the header source. It does not prove the control is reachable,
+  enabled, or visible at runtime. Only the iris-e2e P14 case proves that; see
+  IRIS-TRUTH-0004 and the e2e binding recorded under evidence.
 executor:
   kind: product
   blocking: true
@@ -12,8 +17,15 @@ executor:
   files:
     - src/features/publishing/calendar/components/PublisherCalendarHeader.tsx
   must_contain:
-    - Generate Campaign
     - onGenerateCampaign
+  # A bare substring for the label is not enough. The regression this truth
+  # exists to catch left `{/* Generate Campaign Button */}` and the
+  # `onGenerateCampaign?` prop declaration behind after deleting the control, so
+  # both substrings still matched while the button was gone. Requiring the label
+  # to appear as JSX text is what distinguishes a rendered control from a
+  # leftover comment or an unused prop.
+  must_contain_patterns:
+    - ">\\s*Generate Campaign"
 applies_to:
   repositories:
     - ignitetech-group/iris-web
@@ -39,4 +51,4 @@ governance:
   owner: publisher-maintainers
   approved_at: 2026-09-01
   review_after: 2027-03-01
-  version: 1
+  version: 2

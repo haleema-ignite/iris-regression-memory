@@ -16,7 +16,11 @@ export function renderSarif(assessment: Assessment): object {
 
   const results = failed.map((finding) => ({
     ruleId: finding.truthId,
-    level: finding.blocking ? "error" : "warning",
+    // A pre-existing leftover is real but is not this change's defect, so it
+    // must not annotate the diff at error level.
+    level: finding.failureClass === "preexisting"
+      ? "note"
+      : finding.blocking ? "error" : "warning",
     message: {
       text: `${finding.reason} Evidence: ${finding.evidence.detail}`,
     },
@@ -33,6 +37,8 @@ export function renderSarif(assessment: Assessment): object {
       assessmentOutcome: assessment.outcome,
       coverage: assessment.coverage.status,
       executor: finding.executor,
+      failureClass: finding.failureClass,
+      evidenceScope: finding.evidence.scope,
     },
   }));
 
