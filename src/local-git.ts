@@ -70,6 +70,26 @@ export function resolveBase(root: string, base?: string): ResolvedBase {
   return { ref: base, sha: resolved.stdout.trim(), local: !base.startsWith("origin/") };
 }
 
+/**
+ * Resolve the common ancestor a pull-request-style comparison is actually
+ * based on.
+ *
+ * GitHub's `base.sha` is the current tip of the target branch. It is not
+ * necessarily the commit the feature branch diverged from: the target branch
+ * may have advanced after the PR was opened. Attribution must therefore use
+ * the merge base of base and head, not the base tip itself.
+ */
+export function resolveMergeBase(
+  root: string,
+  base: string,
+  head: string,
+): string | undefined {
+  const result = git(root, ["merge-base", base, head]);
+  if (result.status !== 0) return undefined;
+  const sha = result.stdout.trim();
+  return /^[0-9a-f]{40}$/i.test(sha) ? sha : undefined;
+}
+
 export interface WorktreeStatus {
   modified: number;
   untracked: string[];
@@ -120,8 +140,7 @@ export function localCheckoutDiff(
   const base = resolveBase(root, options.base);
   const head = options.head && options.head !== "HEAD" ? options.head : undefined;
 
-  const mergeBaseResult = git(root, ["merge-base", base.sha, head ?? "HEAD"]);
-  const mergeBase = mergeBaseResult.status === 0 ? mergeBaseResult.stdout.trim() : base.sha;
+  const mergeBase = resolveMergeBase(root, base.sha, head ?? "HEAD") ?? base.sha;
 
   const args = ["diff", "--no-ext-diff", "--unified=3", mergeBase];
   if (head) args.push(head);

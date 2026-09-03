@@ -46,7 +46,8 @@ Only `fact_failed` can ever fail a check, in either enforcement mode.
 ## Attribution needs a base state
 
 Failures are classified by asking the same truth about the state *before* the
-change. Pass `--base-ref` (or `--base-workspace`) or attribution is `unknown`.
+change. Local and PR modes use the merge base automatically. An explicit diff
+needs `--base-ref` (or `--base-workspace`) or attribution is `unknown`.
 
 This is not optional polish. The earlier rule was "did the change touch the file
 the evidence points at?", and under it a change that edited
@@ -58,8 +59,10 @@ change, which is precisely the credibility this trial is meant to establish.
 ## The diff and the checkout must be the same revision
 
 For `--pr`, the CLI verifies the checkout is at the pull request head and is
-clean, and refuses otherwise. A diff that deletes a control, assessed against a
-checkout that still has it, produces a confident and wrong pass.
+clean, and refuses otherwise. It computes the merge base of GitHub's current
+base tip and PR head for attribution; the current base tip is never substituted
+for that ancestor. A diff that deletes a control, assessed against a checkout
+that still has it, produces a confident and wrong pass.
 
 For `--diff-file` there is nothing to verify against, so the report is labelled
 `Revision: UNVERIFIED`. Treat workspace conclusions from a local diff as
@@ -84,10 +87,11 @@ document said it did; that reading came from a dirty local feature branch.
 
 ## Before enabling any automatic trigger
 
-1. **Shadow first.** Run the CLI by hand, or on a schedule, against recent merged
-   pull requests, read every finding, and score it before changing any rule.
-   The trial has never seen a live pull request. This is the step that would
-   turn the benchmark from a regression suite into evidence.
+1. **Keep shadowing.** The first read-only smoke cohort covered seven open PR
+   heads with no introduced findings; see
+   `docs/prospective-trial-2026-09-03.md`. Expand the cohort, independently read
+   every introduced finding, and score it before changing any rule. The tuned
+   benchmark remains a regression suite rather than independent evidence.
 2. **Resolve the open proposals.** `IRIS-TRUTH-0020` and `0021` need an owner's
    judgement. `0021` records a documentation-versus-code contradiction that would
    be encoded wrongly if guessed. See `docs/iris.md`.
@@ -98,8 +102,9 @@ document said it did; that reading came from a dirty local feature branch.
    statement about what the code does needs repository, branch, SHA and whether
    the tree was clean. `npm run probe:canonical` now does this mechanically, and
    must pass before any claim is repeated to the team.
-5. **Validate the emitters with the real Semgrep CLI.** `npm run verify:semgrep`.
-   A rule Semgrep rejects stops every other rule in that config from running.
+5. **Validate the emitters with the real Semgrep CLI.** Run
+   `npm run verify:semgrep:required`. Release qualification fails when Semgrep
+   is missing; a rule Semgrep rejects stops every other rule in that config.
 6. **Do not run as `pull_request_target`.** Product, decision and workspace-mode
    truths read the checkout. A privileged trigger that only fetches a diff cannot
    prove them, and the CLI now refuses to try.
@@ -116,8 +121,8 @@ A truth qualifies when all of these hold:
   fail. `summary.casesMeetingNamedExpectations` is the number that matters, not
   `recall`: recall counts cases where *something* failed. And the benchmark is a
   suite the truths were tuned against, so it can only show absence of
-  regression — a prospective read-only cohort of live pull requests is the only
-  real evidence, and it has not been run.
+  regression. Prospective read-only results are the independent evidence; the
+  initial seven-PR smoke cohort has run and needs to grow before automation.
 - **A stated proof scope.** An `added_lines` truth must carry `proves`, and the
   registry refuses to load without it. Its pass means "not reintroduced", never
   "the fact holds".

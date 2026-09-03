@@ -7,6 +7,7 @@ import { describe, it } from "node:test";
 import {
   detectDefaultBase,
   localCheckoutDiff,
+  resolveMergeBase,
   worktreeStatus,
 } from "../../src/local-git.ts";
 
@@ -101,6 +102,27 @@ describe("local checkout diffs", () => {
       const local = localCheckoutDiff(root, { base: "main" });
       assert.match(local.diff, /mine\.ts/, "my work must be in the diff");
       assert.doesNotMatch(local.diff, /theirs\.ts/, "their work must not be attributed to me");
+      const mergeBase = resolveMergeBase(root, "main", "feature");
+      assert.equal(mergeBase, git(root, ["rev-parse", "feature^"]).stdout.trim());
+      assert.notEqual(mergeBase, git(root, ["rev-parse", "main"]).stdout.trim());
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("returns no merge base for unrelated histories instead of using the base tip", () => {
+    const root = scratchRepo();
+    try {
+      writeFileSync(join(root, "main.ts"), "export const main = true;\n");
+      git(root, ["add", "main.ts"]);
+      git(root, ["commit", "-m", "main history"]);
+      git(root, ["checkout", "--orphan", "unrelated"]);
+      git(root, ["rm", "-q", "-f", "main.ts"]);
+      writeFileSync(join(root, "other.ts"), "export const other = true;\n");
+      git(root, ["add", "other.ts"]);
+      git(root, ["commit", "-m", "unrelated history"]);
+
+      assert.equal(resolveMergeBase(root, "main", "unrelated"), undefined);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

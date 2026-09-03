@@ -20,7 +20,8 @@
     "evaluate:local": "node scripts/evaluate-local.mjs",
     "trial:local": "node scripts/trial-local.mjs",
     "probe:canonical": "node scripts/canonical-probe.mjs",
-    "verify:semgrep": "node scripts/verify-semgrep.mjs"
+    "verify:semgrep": "node scripts/verify-semgrep.mjs",
+    "verify:semgrep:required": "node scripts/verify-semgrep.mjs --required"
   },
   "license": "MIT",
   "files": [

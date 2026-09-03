@@ -28,8 +28,13 @@ function argValue(name, fallback) {
   return index >= 0 ? process.argv[index + 1] : fallback;
 }
 
+function hasFlag(name) {
+  return process.argv.includes(name);
+}
+
 const irisRoot = resolve(argValue("--iris-root", resolve(repoRoot, "..")));
 const refs = (argValue("--refs", "origin/main,origin/develop")).split(",").map((ref) => ref.trim());
+const allowMissing = hasFlag("--allow-missing");
 
 /**
  * What the registry asserts about each repository at a canonical ref.
@@ -143,13 +148,18 @@ process.stdout.write(`Refs: ${refs.join(", ")}\n\n`);
 for (const claim of CLAIMS) {
   const checkout = join(irisRoot, claim.directory);
   if (!existsSync(join(checkout, ".git"))) {
-    process.stdout.write(`${claim.directory}: not present, skipped\n`);
+    process.stdout.write(`${claim.directory}: not present${allowMissing ? ", skipped" : " — REQUIRED"}\n`);
+    if (!allowMissing) failures += 1;
     continue;
   }
   for (const ref of refs) {
     const tree = materialize(checkout, ref);
     if (!tree) {
-      process.stdout.write(`${claim.directory} ${ref}: could not materialize, skipped\n`);
+      process.stdout.write(
+        `${claim.directory} ${ref}: could not materialize` +
+        `${allowMissing ? ", skipped" : " — REQUIRED"}\n`,
+      );
+      if (!allowMissing) failures += 1;
       continue;
     }
     try {

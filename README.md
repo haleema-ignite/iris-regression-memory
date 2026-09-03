@@ -53,6 +53,8 @@ npm run list
 npm run compile
 npm run evaluate:local -- --workspace /absolute/path/to/IRIS
 npm run mcp
+npm run probe:canonical -- --iris-root /absolute/path/to/IRIS
+npm run verify:semgrep:required  # release/CI prerequisite
 ```
 
 MCP tools: `assess_checkout`, `assess_diff`, `assess_pull_request`, `list_truths`, `get_truth`, `compile_emitters`. Prefer `assess_checkout` for local work.
@@ -122,7 +124,8 @@ change *introduced* exit nonzero; a pre-existing ratchet is always neutral.
 | `no_selected_truth` | No live truth applied. Not a safety assertion. |
 
 Attribution needs a base state. Local mode supplies it from the merge base
-automatically, and PR mode from GitHub's base SHA; otherwise pass `--base-ref`.
+automatically. PR mode computes the merge base of GitHub's base tip and head;
+it never substitutes an advanced base-branch tip. Otherwise pass `--base-ref`.
 Without one, a workspace failure is `unknown` and never gating — the tool will
 not guess who caused it.
 

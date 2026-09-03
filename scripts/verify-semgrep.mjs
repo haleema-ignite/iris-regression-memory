@@ -7,8 +7,9 @@
  * A rule that Semgrep rejects is worse than no rule: the config fails to load
  * and every other rule in it stops running too.
  *
- * Semgrep is optional. When it is not installed this exits 0 and says so,
- * because the trial must not require a Python toolchain to run.
+ * Semgrep is optional for ordinary local use. `--required` makes an absent CLI
+ * fail closed for release qualification. `--semgrep-bin` can point at an
+ * isolated installation without modifying the caller's PATH.
  *
  * Two things are checked:
  *
@@ -17,7 +18,7 @@
  *      match a known-good one. This is the part that would catch a regex that
  *      compiles but has stopped meaning anything.
  */
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,9 +26,17 @@ import { spawnSync } from "node:child_process";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const emitters = join(repoRoot, "tenants", "iris", "emitters");
+const required = process.argv.includes("--required");
+
+function argValue(name, fallback) {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : fallback;
+}
+
+const semgrepBin = argValue("--semgrep-bin", "semgrep");
 
 function semgrep(args, options = {}) {
-  return spawnSync("semgrep", args, {
+  return spawnSync(semgrepBin, args, {
     encoding: "utf8",
     maxBuffer: 50 * 1024 * 1024,
     ...options,
@@ -35,14 +44,23 @@ function semgrep(args, options = {}) {
 }
 
 const probe = semgrep(["--version"]);
-if (probe.error || probe.status !== 0) {
+if (probe.error) {
   process.stdout.write(
     "Semgrep CLI not installed, so the emitted rules were NOT validated against it.\n" +
+    `Attempted executable: ${semgrepBin}\n` +
     "The unit tests only check the YAML structurally. Install semgrep " +
     "(`pipx install semgrep`) and re-run `npm run verify:semgrep` before relying\n" +
-    "on the emitted config in any repository.\n",
+    "on the emitted config in any repository.\n" +
+    (required ? "Strict mode was requested, so this run fails.\n" : ""),
   );
-  process.exit(0);
+  process.exit(required ? 1 : 0);
+}
+if (probe.status !== 0) {
+  process.stdout.write(
+    `Semgrep was found at ${semgrepBin}, but it failed its startup probe.\n` +
+    `${(probe.stderr || probe.stdout || "No diagnostic output.").trim()}\n`,
+  );
+  process.exit(1);
 }
 process.stdout.write(`Semgrep ${probe.stdout.trim()}\n\n`);
 
@@ -67,8 +85,12 @@ for (const name of ["semgrep.yml", "semgrep-diff-scan.yml"]) {
 // Behavioural check: the diff-scan rules must still match a real violation.
 const scratch = mkdtempSync(join(tmpdir(), "truth-semgrep-"));
 try {
-  const bad = join(scratch, "bad.ts");
-  const good = join(scratch, "good.ts");
+  // Keep the fixtures inside the rule's real `src/**/*.ts` include scope. A
+  // root-level fixture would prove nothing: Semgrep correctly ignores it.
+  const sourceDir = join(scratch, "src");
+  mkdirSync(sourceDir);
+  const bad = join(sourceDir, "bad.ts");
+  const good = join(sourceDir, "good.ts");
   writeFileSync(
     bad,
     "export function q(term: string) {\n" +

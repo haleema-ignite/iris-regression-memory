@@ -4,7 +4,7 @@ import { assess } from "./assess.ts";
 import { writeCompileResult } from "./compile.ts";
 import { filesToUnifiedDiff, parseUnifiedDiff } from "./diff.ts";
 import { fetchPullRequest, fetchPullRequestFiles } from "./github.ts";
-import { localCheckoutDiff, worktreeStatus } from "./local-git.ts";
+import { localCheckoutDiff, resolveMergeBase, worktreeStatus } from "./local-git.ts";
 import { assertKnownRepository, loadRegistry } from "./registry.ts";
 import { renderMarkdown } from "./report.ts";
 import type { EnforcementMode } from "./report.ts";
@@ -242,28 +242,37 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
       const raw = filesToUnifiedDiff(files);
       const matches = workspaceSha === meta.headSha;
 
-      // GitHub already told us the base commit, so there is no reason to make
-      // the caller supply it. Without this, every workspace failure on a pull
-      // request came back `unknown` — the tool had the base SHA in hand and
-      // still refused to attribute anything.
-      const prBaseline = baseline ?? materializeIfPresent(workspaceRoot, meta.baseSha);
+      // GitHub's base SHA is the *current tip* of the target branch, not
+      // necessarily the state this change was derived from. A PR is compared
+      // from the merge base of base and head, so attribution must use that same
+      // tree. Otherwise commits added to the target branch after divergence can
+      // be blamed on the PR author.
+      //
+      // An explicit --base-ref remains an escape hatch for shallow/local
+      // checkouts. Without it, failure to resolve the merge base means honest
+      // unattributed findings; never substitute the unrelated base tip.
+      const prMergeBase = options.baseRef
+        ? resolveRef(workspaceRoot, options.baseRef)
+        : resolveMergeBase(workspaceRoot, meta.baseSha, meta.headSha);
+      const prBaseline = baseline
+        ?? (prMergeBase ? materializeIfPresent(workspaceRoot, prMergeBase) : undefined);
       try {
-      if (!matches && !options.allowRevisionMismatch) {
-        throw new Error(
-          `--workspace ${workspaceRoot} is at ${workspaceSha ?? "an unknown revision"}, ` +
-          `but ${sourceRepo}#${meta.number} has head ${meta.headSha}. ` +
-          "Assessing a pull request diff against a different checkout produces confident " +
-          "and wrong answers: check out the head, or pass --allow-revision-mismatch to " +
-          "proceed with the result labelled unverified.",
-        );
-      }
-      if (matches && dirty && !options.allowRevisionMismatch) {
-        throw new Error(
-          `--workspace ${workspaceRoot} is at the pull request head but has uncommitted ` +
-          "changes, so it is not that revision. Stash them, or pass " +
-          "--allow-revision-mismatch to proceed with the result labelled unverified.",
-        );
-      }
+        if (!matches && !options.allowRevisionMismatch) {
+          throw new Error(
+            `--workspace ${workspaceRoot} is at ${workspaceSha ?? "an unknown revision"}, ` +
+            `but ${sourceRepo}#${meta.number} has head ${meta.headSha}. ` +
+            "Assessing a pull request diff against a different checkout produces confident " +
+            "and wrong answers: check out the head, or pass --allow-revision-mismatch to " +
+            "proceed with the result labelled unverified.",
+          );
+        }
+        if (matches && dirty && !options.allowRevisionMismatch) {
+          throw new Error(
+            `--workspace ${workspaceRoot} is at the pull request head but has uncommitted ` +
+            "changes, so it is not that revision. Stash them, or pass " +
+            "--allow-revision-mismatch to proceed with the result labelled unverified.",
+          );
+        }
         return assess({
           repo: options.repo,
           diff: parseUnifiedDiff(raw),
@@ -277,7 +286,7 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
             verified: matches && dirty === false,
             workspaceSha,
             expectedSha: meta.headSha,
-            baseSha: prBaseline?.sha ?? meta.baseSha,
+            baseSha: prBaseline?.sha,
             ...(matches && dirty === false
               ? {}
               : {
@@ -288,8 +297,12 @@ export async function runAssessment(options: CliOptions): Promise<Assessment> {
             ...(prBaseline
               ? {}
               : {
-                baseNote: `the pull request base ${meta.baseSha.slice(0, 12)} is not in this ` +
-                  "checkout, so failures cannot be attributed; fetch it and re-run",
+                baseNote: options.baseRef
+                  ? `the explicit attribution base ${options.baseRef} is not available in this ` +
+                    "checkout, so failures cannot be attributed"
+                  : `the merge base of PR base ${meta.baseSha.slice(0, 12)} and head ` +
+                    `${meta.headSha.slice(0, 12)} is not available in this checkout; fetch both ` +
+                    "histories or pass --base-ref and re-run",
               }),
           },
         });

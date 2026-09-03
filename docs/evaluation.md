@@ -11,18 +11,28 @@ npm run probe:canonical -- --iris-root /absolute/path/to/IRIS
 
 # does the real Semgrep CLI accept, and agree with, the emitted rules?
 npm run verify:semgrep
+
+# release/CI qualification: fail if the Semgrep CLI is unavailable
+npm run verify:semgrep:required
+
+# or qualify with an isolated CLI without changing PATH
+npm run verify:semgrep:required -- --semgrep-bin /absolute/path/to/semgrep
 ```
 
 `probe:canonical` exists because prose claims about "the code" went wrong three
 times, all from reading dirty feature branches. It materializes named refs and
 compares the registry's claims against them. A unit test cannot catch that class
 of error, because the mistake is in the premise rather than the logic.
+Missing checkouts or refs fail the probe by default. `--allow-missing` is only
+for deliberately partial local setups and must not be used as release evidence.
 
 `verify:semgrep` runs the emitted rules through the actual Semgrep CLI —
 `--validate` plus a match/no-match behavioural check. The unit tests only
 inspect the YAML structurally, which cannot tell you Semgrep will accept the
 config. It exits 0 with a notice when Semgrep is not installed, so the trial
-does not require a Python toolchain.
+does not require a Python toolchain. `verify:semgrep:required` fails closed when
+the CLI is unavailable and is the release/CI form. `--semgrep-bin` accepts an
+explicit executable path for hermetic/local qualification.
 
 ## What the unit tests cover
 
@@ -107,8 +117,12 @@ these incident families, several signals were refined after the first replay,
 and two case labels were corrected after review. A suite you tuned against
 cannot measure your own accuracy — it can only stop you regressing.
 
-The only real validation is a prospective, read-only cohort of current pull
-requests, scored before any rule is adjusted. That has not been run.
+The first prospective, read-only smoke cohort is recorded in
+[`prospective-trial-2026-09-03.md`](./prospective-trial-2026-09-03.md). It
+exercised seven open PR heads without an introduced finding. Continue expanding
+that evidence: the only real validation is a prospective cohort of current pull
+requests, scored before any rule is adjusted. Seven cases are an initial smoke
+test, not enough for an accuracy claim.
 
 Detection signals for several truths were refined after the original replay, and
 the truths were derived from these incident families. That makes the benchmark
