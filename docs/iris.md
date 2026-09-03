@@ -65,10 +65,26 @@ Two notes that matter for reading a report:
 | 0021 | `IRIS/CLAUDE.md` documents Kafka `sessionTimeout` 120000 / `rebalanceTimeout` 120000 / `heartbeatInterval` 5000. `sdk/src/kafka-consumer.ts` sets 10000 / 30000 / 3000. One is stale; encoding either without deciding would ratchet the wrong number into place. |
 
 
-## Wire-up
+## Local trial
 
-Not yet wired to any IRIS repository. `docs/rollout.md` is the gate.
+The team trial is local. From this compiler repo:
 
-Product truths require the service checkout, so `--workspace` is mandatory and
-the CLI refuses to run without it. Do not run this as a privileged
+```bash
+npm ci
+npm run trial:local -- --iris-root /absolute/path/to/IRIS
+```
+
+That assesses the `iris-web`, `iris-api`, `iris-sp-engines` and `iris-e2e`
+checkouts with the full live registry. Product and leftover facts need those
+working trees.
+
+Expect `IRIS-TRUTH-0003` to fail on iris-web, and `IRIS-TRUTH-0009` to fail on
+iris-api `origin/main` but hold on `origin/develop`. Both report as
+`preexisting` when a base state is available, which the local mode supplies
+automatically from the diff base.
+
+Not wired to any IRIS repository, and `docs/rollout.md` is the gate. Do not add
+`examples/iris-service.yml` to an IRIS org repository for this trial. Product
+truths require the service checkout, so `--workspace` is mandatory and the CLI
+refuses to run without it; never run this as a privileged
 `pull_request_target` that only fetches a diff.

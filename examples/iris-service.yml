@@ -1,4 +1,5 @@
 # EXAMPLE ONLY — do not copy this into an IRIS service repository yet.
+# The team trial is local: npm run trial:local -- --iris-root /path/to/IRIS
 #
 # The trial is local and warning-only. Nothing here has run against a live pull
 # request, several truths are still gaps, and two are standing ratchets against

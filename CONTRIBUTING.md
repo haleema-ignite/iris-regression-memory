@@ -1,8 +1,15 @@
 # Contributing
 
+The team trial is local: `npm run trial:local -- --iris-root /path/to/IRIS`.
+
 Run `npm run check` before opening a pull request.
 
 New live truths need a failing fixture, a safe neighbor, a role owner, and a review date. Choose the cheapest correct executor. Do not add an LLM judge.
+
+Keep the repository identity-neutral and public-safe.
+
+New live truths need a failing fixture, a safe neighbour, a role owner, and a
+review date. Choose the cheapest correct executor. Do not add an LLM judge.
 
 Keep the repository identity-neutral and public-safe.
 
@@ -10,6 +17,10 @@ Signals must be real code tokens. Grep the target repository first: a signal tha
 is an English description of the failure (`fail open`, `skip persistState`) can
 only match a fixture written to contain it, and makes the registry report
 coverage that does not exist. See `docs/truth-authoring.md`.
+
+Any claim about what the code currently does must name the repository, branch,
+SHA, and whether the checkout was clean. Three truths were written from dirty
+feature branches and two of them were wrong.
 
 Prefer demoting a truth to `gap` over keeping a check whose guard does not exist
 in the code. A gap is honest; a live truth that fails every pull request is not.

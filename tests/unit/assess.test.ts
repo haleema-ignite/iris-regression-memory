@@ -298,6 +298,39 @@ describe("contract and decision truths", () => {
     assert.equal(missing.findings.find((item) => item.truthId === "IRIS-TRUTH-0012")?.verdict, "fail");
   });
 
+  it("proves leftover and product facts from a checkout with no diff", () => {
+    const leftover = assess({
+      repo: apiRepo,
+      diff: parseUnifiedDiff(""),
+      source: "workspace-only",
+      registry,
+      workspace: workspace("fixtures/workspaces/iris-api-leftover"),
+    });
+    assert.equal(leftover.verdict, "fail");
+    assert.ok(leftover.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0009" && finding.verdict === "fail"));
+
+    const product = assess({
+      repo: webRepo,
+      diff: parseUnifiedDiff(""),
+      source: "workspace-only",
+      registry,
+      workspace: workspace("fixtures/workspaces/iris-web-ok"),
+    });
+    assert.ok(product.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0001" && finding.verdict === "pass"));
+    assert.ok(product.findings.some((finding) => finding.truthId === "IRIS-TRUTH-0003" && finding.verdict === "pass"));
+  });
+
+  it("does not claim a board-visibility failure it cannot see from a diff", () => {
+    // Retargeted. The old assertion relied on prose signals matching added
+    // lines. 0012 now requires three real tokens to be *present* in the
+    // checkout, and absence cannot be established from a diff — the guards may
+    // simply live outside it. So without a workspace this must not fail, and
+    // the checkout-based case above is what proves the guard.
+    const result = assessFixture("fixtures/diffs/hidden-board-fail-open.diff", enginesRepo);
+    const finding = result.findings.find((item) => item.truthId === "IRIS-TRUTH-0012");
+    assert.notEqual(finding?.verdict, "fail", "must not invent a failure without evidence");
+  });
+
   it("keeps demoted truths visible as gaps rather than dropping them", () => {
     const result = assessFixture("fixtures/negative/readme-only.diff", enginesRepo);
     const gapIds = result.truthCoverage.gaps.map((gap) => gap.truthId);

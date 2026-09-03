@@ -42,6 +42,17 @@ applies_to:
     - ignitetech-group/iris-sp-engines
   paths:
     - engines/community/src/polling/**
+  # Deliberately NOT scan_workspace.
+  #
+  # Making it always-selected would let a `--no-diff` checkout audit adjudicate
+  # it, which is tempting. It would also mean no engines change can ever abstain
+  # again — and honest abstention, where no live truth applies, is a designed
+  # property this registry protects (four benchmark cases exist to pin it).
+  # Trading that away for one extra audit signal is the wrong side of the deal.
+  #
+  # Consequence to know about: `npm run trial:local` reports
+  # `HEAD iris-sp-engines: inconclusive, selected 0`, because no engines truth
+  # is always-on. That is accurate, not a broken install.
   coupling:
     - community-board-visibility
   excluded_paths:
@@ -61,4 +72,4 @@ governance:
   owner: social-platform-team
   approved_at: 2026-09-02
   review_after: 2027-03-01
-  version: 4
+  version: 6

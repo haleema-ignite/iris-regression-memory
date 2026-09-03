@@ -7,6 +7,9 @@ npm run compile
 npm run build
 # or all four:
 npm run check
+
+# the local trial across every IRIS checkout
+npm run trial:local -- --iris-root /absolute/path/to/IRIS
 ```
 
 ## What the unit tests cover
